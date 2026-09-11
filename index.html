@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#FAFBFF">
 <title>ETS 실적공수</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#FAFBFF;--bg2:#F1F4FC;--sf:#fff;--tx:#0B0F1A;--tx2:#3E4A63;--mu:#7482A0;--ln:#E4E9F5;--ln2:#CFD8EC;
   --c1:#0E9B8C;--c2:#4F6BFF;--c3:#8B5CF6;--ok:#10B981;--warn:#E11D48;--amber:#D97706;
@@ -259,6 +258,11 @@ textarea{min-height:64px;resize:vertical}
         <p class="hint" id="adPins"></p>
       </div>
       <div class="card">
+        <h2>조직도 · 담당 BM <small>다우 조직도 기준, 부서별로 바꿀 수 있음</small></h2>
+        <div id="adOrg"><div class="empty">불러오는 중…</div></div>
+        <p class="hint">"자동"은 다우오피스에서 그 부서의 BM 직책자를 그대로 쓰는 것입니다. 한 BM이 여러 부서를 맡으면 각 부서에서 같은 사람을 지정하세요. 지정한 BM에게 그 부서 현황·월요일 메일이 갑니다.</p>
+      </div>
+      <div class="card">
         <h2>보고 완료 내역 <small>실수로 완료한 주는 해제 가능</small></h2>
         <div id="adCloses"></div>
       </div>
@@ -397,7 +401,7 @@ function enter(){
 }
 function applyUser(){
   $('uName').textContent=USER.name+(USER.dept?' · '+USER.dept:'')+(USER.duty==='BM'?' · BM':'');
-  $('tbBm').classList.toggle('hide',USER.duty!=='BM');
+  $('tbBm').classList.toggle('hide',!(USER.isBm||USER.duty==='BM'||USER.isAdmin));
   $('tbAdmin').classList.toggle('hide',!USER.isAdmin);
 }
 function sync(){
@@ -411,7 +415,7 @@ function sync(){
       var pendIds={}; QUEUE.forEach(function(q){ if(q.op==='save') q.entries.forEach(function(e){pendIds[e.id]=1;}); });
       ENTRIES=d.entries.filter(function(e){return !pendIds[e.id];}).concat(ENTRIES.filter(function(e){return pendIds[e.id];}));
       ls(K_ENT,ENTRIES); netbar(''); render();
-      if(TAB==='Bm'&&PIN.PIN_BM) bmLoad();
+      if(TAB==='Bm'&&PIN[bmPinKind()]) bmLoad();
       if(TAB==='Pj') renderPjList();
     });
   }).catch(function(){ if(!PROJECTS.length) netbar('프로젝트 목록을 아직 못 받았습니다. 인터넷 연결 후 자동으로 받아옵니다.'); });
@@ -434,7 +438,7 @@ function isPending(id){ return QUEUE.some(function(q){ return q.op==='save'&&q.e
 // ---------- 탭 / PIN ----------
 var SUB={Input:'공수 입력',Hist:'내 기록',Bm:'부서 현황',Pj:'프로젝트 등록',Admin:'관리자'};
 function tab(n){
-  if(n==='Bm'&&!PIN.PIN_BM){ askPin('PIN_BM','부서 현황','BM용 PIN을 입력하세요.',function(){ tab('Bm'); }); return; }
+  if(n==='Bm'&&!PIN[bmPinKind()]){ askPin(bmPinKind(),'부서 현황',USER.isAdmin?'관리자 PIN을 입력하세요.':'BM용 PIN을 입력하세요.',function(){ tab('Bm'); }); return; }
   if(n==='Pj'&&!PIN.PIN_PROJECT){ askPin('PIN_PROJECT','프로젝트 등록','프로젝트 등록용 PIN을 입력하세요.',function(){ tab('Pj'); }); return; }
   if(n==='Admin'&&!PIN.PIN_ADMIN){ askPin('PIN_ADMIN','관리자','관리자 PIN을 입력하세요.',function(){ tab('Admin'); }); return; }
   TAB=n;
@@ -443,6 +447,7 @@ function tab(n){
   if(n==='Bm') bmLoad(); if(n==='Pj') renderPjList(); if(n==='Admin') adminLoad();
   window.scrollTo(0,0);
 }
+function bmPinKind(){ return USER.isAdmin?'PIN_ADMIN':'PIN_BM'; }
 var PIN_CB=null, PIN_KIND=null;
 function askPin(kind,title,desc,cb){ PIN_KIND=kind; PIN_CB=cb; $('pinTitle').textContent=title; $('pinDesc').textContent=desc; $('pinInput').value=''; hide('pinMsg'); $('pinModal').classList.add('on'); setTimeout(function(){$('pinInput').focus();},50); }
 function pinCancel(){ $('pinModal').classList.remove('on'); }
@@ -579,15 +584,15 @@ function delForm(){
 }
 
 // ---------- 부서 현황 (BM) ----------
-var BM={week:null,data:null,selEmp:null};
+var BM={week:null,data:null,selEmp:null,bmEmp:''};
 function bmNav(n){ BM.week=addDays(BM.week||addDays(thisMonday(),-7),n*7); if(BM.week>thisMonday()) { BM.week=thisMonday(); return; } bmLoad(); }
 function bmLoad(){
   if(!BM.week) BM.week=addDays(thisMonday(),-7);
   $('bmWeekLbl').innerHTML=md(BM.week)+' ~ '+md(addDays(BM.week,6))+'<small>'+(BM.week===thisMonday()?'이번 주':(BM.week===addDays(thisMonday(),-7)?'지난주':''))+'</small>';
   $('bmBody').innerHTML='<div class="empty">불러오는 중…</div>'; $('bmDetail').style.display='none';
-  api({action:'bmInit',empNo:USER.empNo,pin:PIN.PIN_BM,week:BM.week}).then(function(d){
+  api({action:'bmInit',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){
     if(!d.ok){ $('bmBody').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
-    BM.data=d; bmRender();
+    BM.data=d; BM.bmEmp=d.bmEmp||''; bmRender();
   }).catch(function(){ $('bmBody').innerHTML='<div class="empty">불러오지 못했습니다.</div>'; });
 }
 function bmMatrix(d){
@@ -602,16 +607,19 @@ function bmMatrix(d){
       if(work){ missing.push(day); return {date:day,text:'미입력',status:'miss'}; }
       return {date:day,text:'',status:'off'};
     });
-    return {name:m.name,empNo:m.empNo,duty:m.duty,days:cells,missing:missing};
+    return {name:m.name,empNo:m.empNo,duty:m.duty,dept:m.dept,days:cells,missing:missing};
   });
 }
 function bmRender(){
   var d=BM.data, mx=bmMatrix(d), miss=mx.filter(function(m){return m.missing.length;}), days=[]; for(var i=0;i<7;i++) days.push(addDays(d.week,i));
   var isThis=d.week===d.thisMonday;
-  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">보고 완료</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">보고 완료 전</span>'))+'</div>';
+  var multi=(d.deptNames||[]).length>1;
+  var html='';
+  if(d.groups) html+='<div class="f"><label>담당 BM 그룹 (관리자)</label><select onchange="BM.bmEmp=this.value;BM.selEmp=null;bmLoad()">'+d.groups.map(function(g){return '<option value="'+esc(g.bmEmp)+'"'+(g.bmEmp===d.bmEmp?' selected':'')+'>'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')+'</select></div>';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px"><b style="font-size:13.5px">'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">보고 완료</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">보고 완료 전</span>'))+'</div>';
   html+='<div class="stats"><div><b>'+mx.length+'</b><span>소속 인원</span></div><div class="ok"><b>'+(mx.length-miss.length)+'</b><span>입력 완료</span></div><div class="miss"><b>'+miss.length+'</b><span>미입력</span></div></div>';
-  html+='<div class="mx"><table><thead><tr><th>이름</th>'+days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
-  html+=mx.map(function(m){ return '<tr class="'+(BM.selEmp===m.empNo?'sel':'')+'" onclick="bmSel(\''+m.empNo+'\')"><td>'+esc(m.name)+(m.duty==='BM'?' <span class="badge bm">BM</span>':'')+'</td>'+m.days.map(function(c){return '<td class="'+c.status+'">'+c.text+'</td>';}).join('')+'<td class="tot'+(m.missing.length?' bad':'')+'">'+(m.missing.length||'')+'</td></tr>'; }).join('');
+  html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
+  html+=mx.map(function(m){ return '<tr class="'+(BM.selEmp===m.empNo?'sel':'')+'" onclick="bmSel(\''+m.empNo+'\')"><td>'+esc(m.name)+(m.duty==='BM'?' <span class="badge bm">BM</span>':'')+'</td>'+(multi?'<td style="color:var(--mu);font-size:11.5px">'+esc(m.dept)+'</td>':'')+m.days.map(function(c){return '<td class="'+c.status+'">'+c.text+'</td>';}).join('')+'<td class="tot'+(m.missing.length?' bad':'')+'">'+(m.missing.length||'')+'</td></tr>'; }).join('');
   html+='</tbody></table></div>';
   html+='<div class="bmacts"><button class="btn ghost" onclick="bmExcel()">엑셀 다운로드</button>'+(d.closed||isThis?'<button class="btn dark" disabled>'+(d.closed?'보고 완료됨':'이번 주는 진행 중')+'</button>':'<button class="btn dark" onclick="bmClose()">보고 완료</button>')+'</div>';
   html+='<p class="hint">평일 빈칸은 미입력(빨강), 주말·공휴일은 회색. 이름을 누르면 상세 기록이 보입니다. 미입력자는 앱에서 직접 채우게 하고, 확인이 끝나면 [보고 완료] 후 엑셀을 받으세요.</p>';
@@ -627,20 +635,16 @@ function bmSel(emp,keep){
 }
 function bmClose(){
   if(!confirm(BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주를 보고 완료할까요?\n완료 후에는 소속원이 이 주의 기록을 수정할 수 없습니다.')) return;
-  api({action:'bmClose',empNo:USER.empNo,pin:PIN.PIN_BM,week:BM.week}).then(function(d){ if(d.ok){ toast('보고 완료'); bmLoad(); } else toast(d.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
+  api({action:'bmClose',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){ if(d.ok){ toast('보고 완료'); bmLoad(); } else toast(d.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
 }
 function bmExcel(){
-  var d=BM.data, mx=bmMatrix(d), days=[]; for(var i=0;i<7;i++) days.push(addDays(d.week,i));
-  var s1=[['활동자명','프로젝트','프로젝트번호','작업일','작업(투입)공수','프로젝트공수단위','작업유형','작업단계','직무','작업내용']]
-    .concat(d.entries.map(function(e){return [e.name,e.project,e.projectNo,e.date,e.hours,e.unit||'시간',e.type,e.stage,e.duty,e.memo];}));
-  var s2=[['이름','직책'].concat(days.map(mdw)).concat(['미입력(일)'])]
-    .concat(mx.map(function(m){return [m.name,m.duty].concat(m.days.map(function(c){return c.text;})).concat([m.missing.length]);}));
-  var wb=XLSX.utils.book_new();
-  var w1=XLSX.utils.aoa_to_sheet(s1); w1['!cols']=[{wch:10},{wch:44},{wch:16},{wch:12},{wch:8},{wch:8},{wch:12},{wch:9},{wch:10},{wch:30}];
-  XLSX.utils.book_append_sheet(wb,w1,'ERP입력용');
-  var w2=XLSX.utils.aoa_to_sheet(s2); w2['!cols']=[{wch:10},{wch:8}].concat(days.map(function(){return {wch:9};})).concat([{wch:10}]);
-  XLSX.utils.book_append_sheet(wb,w2,'미입력현황');
-  XLSX.writeFile(wb,'실적공수_'+d.dept+'_'+d.week+'.xlsx');
+  toast('엑셀 만드는 중… (몇 초)');
+  api({action:'bmExcel',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){
+    if(!d.ok){ toast(d.msg||'실패'); return; }
+    var bin=atob(d.b64), arr=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    var url=URL.createObjectURL(new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    var a=document.createElement('a'); a.href=url; a.download=d.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},2000);
+  }).catch(function(){ toast('서버 연결 오류'); });
 }
 
 // ---------- 프로젝트 탭 ----------
@@ -667,7 +671,24 @@ function deactivate(no){
 }
 
 // ---------- 관리자 탭 ----------
+var ORG=null;
+function adminOrgLoad(){
+  api({action:'adminOrg',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){
+    if(!d.ok){ $('adOrg').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
+    ORG=d;
+    var opts=function(dep){ return '<option value="">자동'+(dep.autoBmName?' ('+esc(dep.autoBmName)+')':' (BM 없음)')+'</option>'+d.people.map(function(p){ return '<option value="'+esc(p.empNo)+'"'+(dep.overridden&&p.empNo===dep.bmEmp?' selected':'')+'>'+esc(p.name)+(p.duty?' · '+esc(p.duty):'')+' ('+esc(p.dept)+')</option>'; }).join(''); };
+    $('adOrg').innerHTML=d.depts.map(function(dep){
+      return '<div class="item" style="grid-template-columns:1fr;gap:6px"><div><div class="nm"><b>'+esc(dep.name)+'</b> <span style="color:var(--mu);font-size:12px">'+dep.members.length+'명</span>'+(dep.overridden?' <span class="badge bm">수동 지정</span>':'')+(!dep.bmEmp?' <span class="badge" style="background:#FFE4E8;color:var(--warn)">담당 BM 없음</span>':'')+'</div>'+
+        '<div style="font-size:12px;color:var(--mu);margin-top:2px">'+dep.members.map(function(m){return esc(m.name)+(m.duty==='BM'?'<b style="color:var(--c2)">(BM)</b>':'');}).join(', ')+'</div></div>'+
+        '<div class="row" style="align-items:center"><label style="margin:0">담당 BM</label><select onchange="adminAssign(\''+esc(dep.code)+'\',this.value)">'+opts(dep)+'</select></div></div>';
+    }).join('');
+  }).catch(function(){ $('adOrg').innerHTML='<div class="empty">불러오지 못했습니다.</div>'; });
+}
+function adminAssign(code,emp){
+  api({action:'adminAssign',empNo:USER.empNo,pin:PIN.PIN_ADMIN,deptCode:code,bmEmp:emp}).then(function(d){ if(d.ok){ toast('저장됨'); adminOrgLoad(); } else toast(d.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
+}
 function adminLoad(){
+  adminOrgLoad();
   api({action:'adminInit',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){
     if(!d.ok){ toast(d.msg); return; }
     $('adPins').textContent='현재 PIN — 프로젝트 '+d.pins.PIN_PROJECT+' · BM '+d.pins.PIN_BM+' · 관리자 '+d.pins.PIN_ADMIN;
