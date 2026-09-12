@@ -170,6 +170,7 @@ textarea{min-height:64px;resize:vertical}
 .item .nm{font-size:14.5px;margin-top:2px}
 .item button{font:inherit;font-size:12.5px;font-weight:700;border:1px solid var(--ln2);background:var(--sf);color:var(--tx2);border-radius:999px;padding:6px 12px;cursor:pointer}
 .item button:hover{border-color:var(--warn);color:var(--warn)}
+.item button.del{color:var(--warn);border-color:#F7C6CD}
 .tools{display:flex;gap:10px;align-items:center;margin-bottom:10px}
 .tools input{flex:1}
 .cnt{font-size:12.5px;color:var(--mu);white-space:nowrap}
@@ -236,7 +237,7 @@ textarea{min-height:64px;resize:vertical}
         </div>
         <button class="btn" id="addBtn" onclick="addProject()">등록</button>
         <div class="msg" id="addMsg"></div>
-        <p class="hint">ERP에 등록한 프로젝트명·번호를 그대로 붙여넣으세요. 앞뒤 공백은 자동으로 제거됩니다.</p>
+        <p class="hint">ERP에 등록한 프로젝트명·번호를 그대로 붙여넣으세요. 앞뒤 공백은 자동으로 제거됩니다.<br>[비활성]은 목록에서만 숨기고 기록은 보존, [삭제]는 공수 기록이 없는 프로젝트만 완전히 지웁니다.</p>
       </div>
       <div class="card">
         <h2>등록된 프로젝트</h2>
@@ -342,6 +343,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
+var VER='v0912d';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -408,7 +410,7 @@ function enter(){
   setInterval(function(){ if(navigator.onLine&&QUEUE.length) flush(); },120000);
 }
 function applyUser(){
-  $('uName').textContent=USER.name+(USER.dept?' · '+USER.dept:'')+(USER.duty==='BM'?' · BM':'');
+  $('uName').textContent=USER.name+(USER.dept?' · '+USER.dept:'')+(USER.duty==='BM'?' · BM':'')+' · '+VER;
   $('tbBm').classList.toggle('hide',!(USER.isBm||USER.duty==='BM'||USER.isAdmin));
   $('tbAdmin').classList.toggle('hide',!USER.isAdmin);
 }
@@ -487,9 +489,10 @@ function renderWeek(){
   $('week').innerHTML=html;
   $('wkLabel').textContent='입력 가능: '+lbl.join(' · ');
   $('wkOpen').textContent=OPEN.length>1?'지난주 보고 완료 전':'';
-  setTimeout(function(){ var s=document.querySelector('.day.sel'); if(s&&s.scrollIntoView) s.scrollIntoView({inline:'center',block:'nearest'}); },0);
+  if(SCROLL_SEL){ SCROLL_SEL=false; setTimeout(function(){ var s=document.querySelector('.day.sel'); if(s&&s.scrollIntoView) s.scrollIntoView({inline:'center',block:'nearest'}); },0); }
 }
-function selDay(d){ SEL=d; render(); }
+var SCROLL_SEL=true;
+function selDay(d){ SEL=d; SCROLL_SEL=true; render(); }
 function renderDay(){
   $('dayTitle').textContent=(SEL===today()?'오늘 · ':'')+mdw(SEL);
   var list=entriesOf(SEL);
@@ -579,7 +582,7 @@ function saveForm(){
   if(EDIT){ list.push(Object.assign({},base,{id:EDIT.id,date:date})); ENTRIES=ENTRIES.filter(function(e){return e.id!==EDIT.id;}); }
   else [date].concat(Object.keys(EXTRA).filter(function(d){return EXTRA[d];})).forEach(function(d){ list.push(Object.assign({},base,{id:uid(),date:d})); });
   ENTRIES=ENTRIES.concat(list); ls(K_ENT,ENTRIES);
-  SEL=date; closeForm(); toast(list.length+'건 저장'); tab('Input');
+  SEL=date; SCROLL_SEL=true; closeForm(); toast(list.length+'건 저장'); tab('Input');
   enqueue({op:'save',entries:list}).catch(function(){});
 }
 function delForm(){
@@ -597,7 +600,8 @@ function bmNav(n){ BM.week=addDays(BM.week||addDays(thisMonday(),-7),n*7); if(BM
 function bmLoad(){
   if(!BM.week) BM.week=addDays(thisMonday(),-7);
   $('bmWeekLbl').innerHTML=md(BM.week)+' ~ '+md(addDays(BM.week,6))+'<small>'+(BM.week===thisMonday()?'이번 주':(BM.week===addDays(thisMonday(),-7)?'지난주':''))+'</small>';
-  $('bmBody').innerHTML='<div class="empty">불러오는 중…</div>'; $('bmDetail').style.display='none';
+  if(!BM.data) $('bmBody').innerHTML='<div class="empty">불러오는 중…</div>'; else toast('현황 갱신 중…');
+  $('bmDetail').style.display='none';
   api({action:'bmInit',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){
     if(!d.ok){ $('bmBody').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
     BM.data=d; BM.bmEmp=d.bmEmp||''; bmRender();
@@ -660,7 +664,7 @@ function renderPjList(){
   var q=$('q').value.trim().toLowerCase();
   var rows=PROJECTS.filter(function(p){ return !q||p.no.toLowerCase().indexOf(q)>=0||p.name.toLowerCase().indexOf(q)>=0; });
   $('cnt').textContent=rows.length+' / '+PROJECTS.length+'건';
-  $('pjList').innerHTML=rows.length?rows.slice(0,200).map(function(p){ return '<div class="item"><div><div class="no">'+esc(p.no)+'</div><div class="nm">'+esc(p.name)+'</div></div><button onclick="deactivate(\''+esc(p.no)+'\')">비활성</button></div>'; }).join('')+(rows.length>200?'<div class="empty">200건까지만 표시 — 검색으로 좁히세요</div>':''):'<div class="empty">'+(PROJECTS.length?'검색 결과가 없습니다.':'등록된 프로젝트가 없습니다.')+'</div>';
+  $('pjList').innerHTML=rows.length?rows.slice(0,200).map(function(p){ return '<div class="item"><div><div class="no">'+esc(p.no)+'</div><div class="nm">'+esc(p.name)+'</div></div><div style="display:flex;gap:6px"><button onclick="deactivate(\''+esc(p.no)+'\')">비활성</button><button class="del" onclick="deleteProject(\''+esc(p.no)+'\')">삭제</button></div></div>'; }).join('')+(rows.length>200?'<div class="empty">200건까지만 표시 — 검색으로 좁히세요</div>':''):'<div class="empty">'+(PROJECTS.length?'검색 결과가 없습니다.':'등록된 프로젝트가 없습니다.')+'</div>';
 }
 function reloadProjects(){ return api({action:'listProjects'}).then(function(d){ if(d.ok){ PROJECTS=d.list; ls(K_PJ,{ts:Date.now(),list:PROJECTS}); renderPjList(); } }); }
 function addProject(){
@@ -672,6 +676,10 @@ function addProject(){
     if(d.ok){ show('addMsg',true,'등록되었습니다: '+no); $('pNo').value=''; $('pName').value=''; $('pNo').focus(); reloadProjects(); }
     else show('addMsg',false,d.msg||'등록 실패');
   }).catch(function(){ b.disabled=false; b.textContent='등록'; show('addMsg',false,'서버 연결 오류. 다시 시도하세요.'); });
+}
+function deleteProject(no){
+  if(!confirm(no+' 을(를) 완전히 삭제할까요?\n공수 기록이 있는 프로젝트는 삭제되지 않고 안내가 뜹니다.')) return;
+  api({action:'deleteProject',no:no,pin:PIN.PIN_PROJECT}).then(function(d){ if(d.ok){ toast('삭제됨'); reloadProjects(); } else alert(d.msg||'삭제 실패'); }).catch(function(){ toast('서버 연결 오류'); });
 }
 function deactivate(no){
   if(!confirm(no+' 을(를) 비활성 처리할까요?\n앱 목록에서만 사라지고 기록은 남습니다.')) return;
