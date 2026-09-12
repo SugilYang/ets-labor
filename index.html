@@ -163,6 +163,12 @@ textarea{min-height:64px;resize:vertical}
 .mx td.leave{color:var(--c3);font-weight:800;font-size:11px}
 .mx td.tot{color:var(--mu);font-weight:700}
 .mx td.tot.bad{color:var(--warn)}
+.mx tr.detail{cursor:default}.mx tr.detail td{padding:0;background:rgba(79,107,255,.04);text-align:left;white-space:normal;position:static}
+.mx tr.detail td:first-child{position:static;box-shadow:none;padding:0}
+.mx .dt{padding:8px 14px 10px;min-width:520px}
+.mx .dth{font-size:12.5px;font-weight:800;color:var(--c2);padding:4px 0 2px;display:flex;justify-content:space-between}
+.mx .dth span{font-weight:500;color:var(--mu);font-size:11.5px}
+.mx .dt .ent{padding:7px 0}
 .bmacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px 4px;border-top:1px solid var(--ln)}
 .item:first-child{border-top:0}
@@ -278,7 +284,7 @@ textarea{min-height:64px;resize:vertical}
   </div>
 </div>
 
-<button class="fab on" id="fab" onclick="openForm()">＋</button>
+<button class="fab" id="fab" onclick="openForm()">＋</button>
 <div class="tabs" id="tabs" style="display:none"><div class="in">
   <button id="tbInput" class="on" onclick="tab('Input')"><svg viewBox="0 0 24 24"><path d="M4 20h16M12 4v12M6 10l6 6 6-6"/></svg>입력</button>
   <button id="tbHist" onclick="tab('Hist')"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>기록</button>
@@ -343,7 +349,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0912e';
+var VER='v0912g';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -391,6 +397,7 @@ function logout(){ [K_USER,K_ENT,K_LAST].forEach(function(k){localStorage.remove
 // ---------- 시작 / 동기화 ----------
 function enter(){
   $('login').style.display='none'; $('app').style.display='block'; $('tabs').style.display='block';
+  $('fab').classList.add('on');
   $('fType').innerHTML=TYPES.map(function(t){return '<option>'+t+'</option>';}).join('');
   applyUser();
   OPEN=[thisMonday()]; SEL=today();
@@ -631,19 +638,23 @@ function bmRender(){
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px"><b style="font-size:13.5px">'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">보고 완료</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">보고 완료 전</span>'))+'</div>';
   html+='<div class="stats"><div><b>'+mx.length+'</b><span>소속 인원</span></div><div class="ok"><b>'+(mx.length-miss.length)+'</b><span>입력 완료</span></div><div class="miss"><b>'+miss.length+'</b><span>미입력</span></div></div>';
   html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
-  html+=mx.map(function(m){ return '<tr class="'+(BM.selEmp===m.empNo?'sel':'')+'" onclick="bmSel(\''+m.empNo+'\')"><td>'+esc(m.name)+(m.duty==='BM'?' <span class="badge bm">BM</span>':'')+'</td>'+(multi?'<td style="color:var(--mu);font-size:11.5px">'+esc(m.dept)+'</td>':'')+m.days.map(function(c){return '<td class="'+c.status+'">'+c.text+'</td>';}).join('')+'<td class="tot'+(m.missing.length?' bad':'')+'">'+(m.missing.length||'')+'</td></tr>'; }).join('');
+  var cols=1+(multi?1:0)+7+1;
+  html+=mx.map(function(m){
+    var row='<tr class="'+(BM.selEmp===m.empNo?'sel':'')+'" onclick="bmSel(\''+m.empNo+'\')"><td>'+esc(m.name)+(m.duty==='BM'?' <span class="badge bm">BM</span>':'')+'</td>'+(multi?'<td style="color:var(--mu);font-size:11.5px">'+esc(m.dept)+'</td>':'')+m.days.map(function(c){return '<td class="'+c.status+'">'+c.text+'</td>';}).join('')+'<td class="tot'+(m.missing.length?' bad':'')+'">'+(m.missing.length||'')+'</td></tr>';
+    if(BM.selEmp===m.empNo){
+      var list=d.entries.filter(function(e){return e.empNo===m.empNo;});
+      row+='<tr class="detail"><td colspan="'+cols+'"><div class="dt"><div class="dth">'+esc(m.name)+' · '+list.length+'건 · '+sumOf(list)+'시간 <span>닫으려면 이름을 다시 누르세요</span></div>'+(list.length?list.map(function(e){ var x=Object.assign({},e); x.project=mdw(e.date)+' '+e.project; return entHtml(x,true); }).join(''):'<div class="empty">이 주 기록이 없습니다.</div>')+'</div></td></tr>';
+    }
+    return row; }).join('');
   html+='</tbody></table></div>';
   html+='<div class="bmacts"><button class="btn ghost" onclick="bmExcel()">엑셀 다운로드</button>'+(d.closed||isThis?'<button class="btn dark" disabled>'+(d.closed?'보고 완료됨':'이번 주는 진행 중')+'</button>':'<button class="btn dark" onclick="bmClose()">보고 완료</button>')+'</div>';
   html+='<p class="hint">평일 빈칸은 미입력(빨강), 주말·공휴일은 회색. 이름을 누르면 상세 기록이 보입니다. 미입력자는 앱에서 직접 채우게 하고, 확인이 끝나면 [보고 완료] 후 엑셀을 받으세요.</p>';
   $('bmBody').innerHTML=html;
-  if(BM.selEmp) bmSel(BM.selEmp,true);
+  $('bmDetail').style.display='none';
 }
 function bmSel(emp,keep){
-  if(!keep&&BM.selEmp===emp){ BM.selEmp=null; $('bmDetail').style.display='none'; bmRender(); return; }
-  BM.selEmp=emp; if(!keep) bmRender();
-  var d=BM.data, m=d.members.filter(function(x){return x.empNo===emp;})[0], list=d.entries.filter(function(e){return e.empNo===emp;});
-  $('bmDetail').style.display='block';
-  $('bmDetail').innerHTML='<h2>'+esc(m.name)+' <small>'+list.length+'건 · '+sumOf(list)+'시간</small></h2>'+(list.length?list.map(function(e){ var x=Object.assign({},e); x.project=mdw(e.date)+' '+e.project; return entHtml(x,true); }).join(''):'<div class="empty">이 주 기록이 없습니다.</div>');
+  BM.selEmp=(!keep&&BM.selEmp===emp)?null:emp;
+  bmRender();
 }
 function bmClose(){
   if(!confirm(BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주를 보고 완료할까요?\n완료 후에는 소속원이 이 주의 기록을 수정할 수 없습니다.')) return;
