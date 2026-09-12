@@ -268,7 +268,8 @@ textarea{min-height:64px;resize:vertical}
       </div>
       <div class="card">
         <h2>주간보고 메일</h2>
-        <p class="hint" style="margin:0 0 10px">매주 월요일 06시 부서별 BM에게 자동 발송됩니다. 아래 버튼은 지난주 자료로 본인에게만 테스트 발송합니다.</p>
+        <p class="hint" style="margin:0 0 10px">매주 월요일 06시 담당 BM에게 자동 발송됩니다. 아래는 지난주 자료로 <b>본인 메일에만</b> 테스트 발송합니다.</p>
+        <div class="f"><label>어느 BM 그룹으로 만들지</label><select id="adMailGrp"></select></div>
         <button class="btn ghost" onclick="adminTestMail()">테스트 메일 보내기</button>
         <div class="msg" id="adMailMsg"></div>
       </div>
@@ -680,6 +681,7 @@ function adminOrgLoad(){
   api({action:'adminOrg',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){
     if(!d.ok){ $('adOrg').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
     ORG=d;
+    $('adMailGrp').innerHTML=(d.groups||[]).map(function(g){return '<option value="'+esc(g.bmEmp)+'">'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')||'<option value="">담당 BM 그룹 없음</option>';
     var opts=function(dep){ return '<option value="">자동'+(dep.autoBmName?' ('+esc(dep.autoBmName)+')':' (BM 없음)')+'</option><option value="OFF"'+(dep.off?' selected':'')+'>사용 안 함 (이 부서는 공수 입력 대상 아님)</option>'+d.people.map(function(p){ return '<option value="'+esc(p.empNo)+'"'+(dep.overridden&&p.empNo===dep.bmEmp?' selected':'')+'>'+esc(p.name)+(p.duty?' · '+esc(p.duty):'')+' ('+esc(p.dept)+')</option>'; }).join(''); };
     $('adOrg').innerHTML=d.depts.map(function(dep){
       return '<div class="item" style="grid-template-columns:1fr;gap:6px"><div><div class="nm"><b>'+esc(dep.name)+'</b> <span style="color:var(--mu);font-size:12px">'+dep.members.length+'명</span>'+(dep.off?' <span class="badge closed">사용 안 함</span>':(dep.overridden?' <span class="badge bm">수동 지정</span>':''))+(!dep.off&&!dep.bmEmp?' <span class="badge" style="background:#FFE4E8;color:var(--warn)">담당 BM 없음</span>':'')+'</div>'+
@@ -713,7 +715,7 @@ function adminReopen(code,week,dept){
 }
 function adminTestMail(){
   hide('adMailMsg'); toast('발송 중… (10초 정도)');
-  api({action:'adminTestMail',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){ show('adMailMsg',d.ok,d.msg||(d.ok?'발송됨':'실패')); }).catch(function(){ show('adMailMsg',false,'서버 연결 오류'); });
+  api({action:'adminTestMail',empNo:USER.empNo,pin:PIN.PIN_ADMIN,bmEmp:$('adMailGrp').value}).then(function(d){ show('adMailMsg',d.ok,d.msg||(d.ok?'발송됨':'실패')); }).catch(function(){ show('adMailMsg',false,'서버 연결 오류'); });
 }
 
 // ---------- 기타 ----------
