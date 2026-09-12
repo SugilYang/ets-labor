@@ -394,10 +394,14 @@ function enter(){
   var pc=ls(K_PJ); PROJECTS=(pc&&pc.list)||[]; ENTRIES=ls(K_ENT)||[]; QUEUE=ls(K_Q)||[];
   render(); sync();
   window.addEventListener('online',flush);
-  var lastSync=Date.now();
-  function resync(){ if(document.hidden||!navigator.onLine) return; if(Date.now()-lastSync<3000) return; lastSync=Date.now(); sync(); }
-  document.addEventListener('visibilitychange',resync); window.addEventListener('focus',resync);
-  setInterval(function(){ if(navigator.onLine&&QUEUE.length) flush(); else resync(); },300000);
+  // 자동 동기화는 화면을 2분 이상 떠났다 돌아왔을 때만 (그 외엔 [새로고침] 버튼)
+  var hiddenAt=null;
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){ hiddenAt=Date.now(); return; }
+    if(hiddenAt&&Date.now()-hiddenAt>120000&&navigator.onLine) sync();
+    hiddenAt=null;
+  });
+  setInterval(function(){ if(navigator.onLine&&QUEUE.length) flush(); },120000);
 }
 function applyUser(){
   $('uName').textContent=USER.name+(USER.dept?' · '+USER.dept:'')+(USER.duty==='BM'?' · BM':'');
@@ -676,9 +680,9 @@ function adminOrgLoad(){
   api({action:'adminOrg',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){
     if(!d.ok){ $('adOrg').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
     ORG=d;
-    var opts=function(dep){ return '<option value="">자동'+(dep.autoBmName?' ('+esc(dep.autoBmName)+')':' (BM 없음)')+'</option>'+d.people.map(function(p){ return '<option value="'+esc(p.empNo)+'"'+(dep.overridden&&p.empNo===dep.bmEmp?' selected':'')+'>'+esc(p.name)+(p.duty?' · '+esc(p.duty):'')+' ('+esc(p.dept)+')</option>'; }).join(''); };
+    var opts=function(dep){ return '<option value="">자동'+(dep.autoBmName?' ('+esc(dep.autoBmName)+')':' (BM 없음)')+'</option><option value="OFF"'+(dep.off?' selected':'')+'>사용 안 함 (이 부서는 공수 입력 대상 아님)</option>'+d.people.map(function(p){ return '<option value="'+esc(p.empNo)+'"'+(dep.overridden&&p.empNo===dep.bmEmp?' selected':'')+'>'+esc(p.name)+(p.duty?' · '+esc(p.duty):'')+' ('+esc(p.dept)+')</option>'; }).join(''); };
     $('adOrg').innerHTML=d.depts.map(function(dep){
-      return '<div class="item" style="grid-template-columns:1fr;gap:6px"><div><div class="nm"><b>'+esc(dep.name)+'</b> <span style="color:var(--mu);font-size:12px">'+dep.members.length+'명</span>'+(dep.overridden?' <span class="badge bm">수동 지정</span>':'')+(!dep.bmEmp?' <span class="badge" style="background:#FFE4E8;color:var(--warn)">담당 BM 없음</span>':'')+'</div>'+
+      return '<div class="item" style="grid-template-columns:1fr;gap:6px"><div><div class="nm"><b>'+esc(dep.name)+'</b> <span style="color:var(--mu);font-size:12px">'+dep.members.length+'명</span>'+(dep.off?' <span class="badge closed">사용 안 함</span>':(dep.overridden?' <span class="badge bm">수동 지정</span>':''))+(!dep.off&&!dep.bmEmp?' <span class="badge" style="background:#FFE4E8;color:var(--warn)">담당 BM 없음</span>':'')+'</div>'+
         '<div style="font-size:12px;color:var(--mu);margin-top:2px">'+dep.members.map(function(m){return esc(m.name)+(m.duty==='BM'?'<b style="color:var(--c2)">(BM)</b>':'');}).join(', ')+'</div></div>'+
         '<div class="row" style="align-items:center"><label style="margin:0">담당 BM</label><select onchange="adminAssign(\''+esc(dep.code)+'\',this.value)">'+opts(dep)+'</select></div></div>';
     }).join('');
