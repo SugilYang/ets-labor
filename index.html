@@ -394,6 +394,9 @@ function enter(){
   OPEN=[thisMonday()]; SEL=today();
   var pc=ls(K_PJ); PROJECTS=(pc&&pc.list)||[]; ENTRIES=ls(K_ENT)||[]; QUEUE=ls(K_Q)||[];
   render(); sync();
+  // 메일 링크(?tab=bm&week=YYYY-MM-DD)로 들어온 경우 바로 부서 탭으로
+  var qs=new URLSearchParams(location.search);
+  if(qs.get('tab')==='bm'){ if(/^\d{4}-\d{2}-\d{2}$/.test(qs.get('week')||'')) BM.week=monOf(qs.get('week')); history.replaceState(null,'',location.pathname); setTimeout(function(){ tab('Bm'); },50); }
   window.addEventListener('online',flush);
   // 자동 동기화는 화면을 2분 이상 떠났다 돌아왔을 때만 (그 외엔 [새로고침] 버튼)
   var hiddenAt=null;
