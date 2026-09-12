@@ -265,6 +265,12 @@ textarea{min-height:64px;resize:vertical}
         <p class="hint" id="adPins"></p>
       </div>
       <div class="card">
+        <h2>시스템 시작일 <small>이 날짜 전은 미입력으로 잡지 않고 메일도 안 나감</small></h2>
+        <div class="row"><div class="f"><label>시작일</label><input type="date" id="adStart"></div><div class="f"><label>&nbsp;</label><button class="btn" onclick="adminSetStart()">저장</button></div></div>
+        <div class="msg" id="adStartMsg"></div>
+        <p class="hint">예: 9/14(월)부터 운영하면 2026-09-14. 그 전 주에 대한 월요일 메일은 나가지 않고, 앱과 부서 탭에서도 그 전 날짜는 "미입력"으로 표시되지 않습니다.</p>
+      </div>
+      <div class="card">
         <h2>조직도 · 담당 BM <small>다우 조직도 기준, 부서별로 바꿀 수 있음</small></h2>
         <div id="adOrg"><div class="empty">불러오는 중…</div></div>
         <p class="hint">"자동"은 다우오피스에서 그 부서의 BM 직책자를 그대로 쓰는 것입니다. 한 BM이 여러 부서를 맡으면 각 부서에서 같은 사람을 지정하세요. 지정한 BM에게 그 부서 현황·월요일 메일이 갑니다.</p>
@@ -276,7 +282,7 @@ textarea{min-height:64px;resize:vertical}
       <div class="card">
         <h2>주간보고 메일</h2>
         <p class="hint" style="margin:0 0 10px">매주 월요일 06시 담당 BM에게 자동 발송됩니다. 아래는 지난주 자료로 <b>본인 메일에만</b> 테스트 발송합니다.</p>
-        <div class="f"><label>어느 BM 그룹으로 만들지</label><select id="adMailGrp"></select></div>
+        <div class="row"><div class="f"><label>어느 BM 그룹으로</label><select id="adMailGrp"></select></div><div class="f"><label>어느 주 자료로</label><select id="adMailWeek"><option value="this">이번 주 (진행 중)</option><option value="last">지난주</option></select></div></div>
         <button class="btn ghost" onclick="adminTestMail()">테스트 메일 보내기</button>
         <div class="msg" id="adMailMsg"></div>
       </div>
@@ -349,12 +355,12 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0912g';
+var VER='v0912h';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
 var DOW=['월','화','수','목','금','토','일'];
-var USER=null, PROJECTS=[], ENTRIES=[], QUEUE=[], OPEN=[], HOL=[], SEL=null, EDIT=null, PJ=null, TAB='Input';
+var START='', USER=null, PROJECTS=[], ENTRIES=[], QUEUE=[], OPEN=[], HOL=[], SEL=null, EDIT=null, PJ=null, TAB='Input';
 var PIN={}; // 세션 동안만 (새로고침하면 다시 입력)
 
 // ---------- 공통 ----------
@@ -376,7 +382,7 @@ function thisMonday(){ return monOf(today()); }
 function md(s){ return (+s.slice(5,7))+'/'+(+s.slice(8,10)); }
 function mdw(s){ return md(s)+'('+DOW[dow(s)]+')'; }
 function editable(s){ return OPEN.indexOf(monOf(s))>=0; }
-function isWorkday(s){ return dow(s)<5 && HOL.indexOf(s)<0; }
+function isWorkday(s){ return (!START||s>=START) && dow(s)<5 && HOL.indexOf(s)<0; }
 function rangeStart(){ return OPEN.length?OPEN[0]:thisMonday(); }
 function rangeEnd(){ return addDays(thisMonday(),6); }
 
@@ -427,7 +433,7 @@ function sync(){
       if(!d.ok){ if(d.relogin){ toast(d.msg); logout(); } return; }
       USER=d.user; ls(K_USER,USER); applyUser();
       PROJECTS=d.projects; ls(K_PJ,{ts:Date.now(),list:PROJECTS});
-      OPEN=d.openWeeks; HOL=d.holidays||[];
+      OPEN=d.openWeeks; HOL=d.holidays||[]; START=d.startDate||'';
       if(!editable(SEL)) SEL=today();
       var pendIds={}; QUEUE.forEach(function(q){ if(q.op==='save') q.entries.forEach(function(e){pendIds[e.id]=1;}); });
       ENTRIES=d.entries.filter(function(e){return !pendIds[e.id];}).concat(ENTRIES.filter(function(e){return pendIds[e.id];}));
@@ -619,7 +625,7 @@ function bmMatrix(d){
   var days=[]; for(var i=0;i<7;i++) days.push(addDays(d.week,i));
   return d.members.map(function(m){
     var missing=[], cells=days.map(function(day){
-      var list=by[m.empNo+'|'+day]||[], work=dow(day)<5&&d.holidays.indexOf(day)<0;
+      var list=by[m.empNo+'|'+day]||[], work=isWorkday(day);
       if(list.some(function(e){return e.type==='연차';})) return {date:day,text:'연차',status:'leave'};
       var h=list.reduce(function(a,e){return a+e.hours;},0);
       if(h>0) return {date:day,text:String(h),status:'ok'};
@@ -720,8 +726,13 @@ function adminLoad(){
   api({action:'adminInit',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){
     if(!d.ok){ toast(d.msg); return; }
     $('adPins').textContent='현재 PIN — 프로젝트 '+d.pins.PIN_PROJECT+' · BM '+d.pins.PIN_BM+' · 관리자 '+d.pins.PIN_ADMIN;
+    $('adStart').value=d.startDate||'';
     $('adCloses').innerHTML=d.closes.length?d.closes.map(function(c){ return '<div class="item"><div><div class="nm"><b>'+esc(c.dept)+'</b> · '+md(c.week)+'~'+md(addDays(c.week,6))+'</div><div class="no" style="color:var(--mu)">'+esc(c.by)+' · '+esc(c.at)+'</div></div><button onclick="adminReopen(\''+esc(c.deptCode)+'\',\''+c.week+'\',\''+esc(c.dept)+'\')">해제</button></div>'; }).join(''):'<div class="empty">아직 보고 완료된 주가 없습니다.</div>';
   }).catch(function(){ toast('서버 연결 오류'); });
+}
+function adminSetStart(){
+  var v=$('adStart').value;
+  api({action:'adminSetStart',empNo:USER.empNo,pin:PIN.PIN_ADMIN,date:v}).then(function(d){ if(d.ok){ show('adStartMsg',true,v?'시작일 '+v+' 저장됨':'시작일 해제됨'); sync(); } else show('adStartMsg',false,d.msg||'실패'); }).catch(function(){ show('adStartMsg',false,'서버 연결 오류'); });
 }
 function adminSetPin(){
   var kind=$('adKind').value, v=$('adPin').value.trim();
@@ -737,7 +748,7 @@ function adminReopen(code,week,dept){
 }
 function adminTestMail(){
   hide('adMailMsg'); toast('발송 중… (10초 정도)');
-  api({action:'adminTestMail',empNo:USER.empNo,pin:PIN.PIN_ADMIN,bmEmp:$('adMailGrp').value}).then(function(d){ show('adMailMsg',d.ok,d.msg||(d.ok?'발송됨':'실패')); }).catch(function(){ show('adMailMsg',false,'서버 연결 오류'); });
+  api({action:'adminTestMail',empNo:USER.empNo,pin:PIN.PIN_ADMIN,bmEmp:$('adMailGrp').value,week:$('adMailWeek').value}).then(function(d){ show('adMailMsg',d.ok,d.msg||(d.ok?'발송됨':'실패')); }).catch(function(){ show('adMailMsg',false,'서버 연결 오류'); });
 }
 
 // ---------- 기타 ----------
