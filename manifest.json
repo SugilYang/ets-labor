@@ -1,0 +1,16 @@
+{
+  "name": "ETS 실적공수",
+  "short_name": "실적공수",
+  "description": "프로젝트 투입공수를 스마트폰으로 기록합니다",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FAFBFF",
+  "theme_color": "#FAFBFF",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
