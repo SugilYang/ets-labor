@@ -96,6 +96,14 @@ textarea{min-height:64px;resize:vertical}
 .carry .ent{cursor:default}
 .carry .btn{margin-top:10px}
 .wk{margin-bottom:12px}
+.selbar{display:flex;align-items:center;gap:8px;margin:0 0 10px;flex-wrap:wrap}
+.selbar .n{font-size:12.5px;color:var(--tx2);font-weight:700;margin-right:auto}
+.selbar button{font:inherit;font-size:12.5px;font-weight:700;border:1px solid var(--ln2);background:var(--sf);color:var(--tx2);border-radius:999px;padding:7px 13px;cursor:pointer}
+.selbar button.on{border-color:transparent;background:var(--grad);color:#fff}
+.selbar button.del{color:#fff;background:var(--warn);border-color:var(--warn)}
+.selbar button:disabled{opacity:.45;cursor:default}
+.ent .ck{width:20px;height:20px;border:1.5px solid var(--ln2);border-radius:6px;display:inline-grid;place-items:center;margin-right:10px;vertical-align:-4px;color:transparent;font-size:12px;font-weight:900;background:var(--sf)}
+.ent.ckon .ck{background:var(--c2);border-color:var(--c2);color:#fff}
 .wk .t{font-size:12.5px;font-weight:700;color:var(--tx2);margin:0 0 6px 4px;display:flex;justify-content:space-between;align-items:center}
 
 /* 탭바 + FAB */
@@ -235,7 +243,7 @@ textarea{min-height:64px;resize:vertical}
     </div>
 
     <!-- 기록 -->
-    <div class="pane" id="paneHist"><div id="hist"></div></div>
+    <div class="pane" id="paneHist"><div class="selbar" id="selbar"></div><div id="hist"></div></div>
 
     <!-- 부서 현황 (BM) -->
     <div class="pane" id="paneBm">
@@ -368,7 +376,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0914a';
+var VER='v0914b';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -526,7 +534,8 @@ function renderDay(){
   $('daySum').textContent=list.length?'합계 '+sumOf(list)+'시간':'';
   $('dayList').innerHTML=list.length?list.map(function(e){return entHtml(e,false);}).join(''):'<div class="empty">아직 기록이 없습니다. ＋ 버튼으로 추가하세요.</div>';
 }
-function entHtml(e,ro){
+function entHtml(e,ro,sel){
+  if(sel) return '<div class="ent'+(SELED[e.id]?' ckon':'')+'" onclick="toggleSel(\''+e.id+'\')"><div><div class="p"><span class="ck">✓</span>'+esc(e.project)+'</div><div class="s"><b>'+esc(e.projectNo)+'</b> · '+esc(e.type)+' · '+esc(e.stage)+'</div></div><div class="hr">'+e.hours+'<small>h</small></div></div>';
   return '<div class="ent'+(ro?' ro':'')+'" '+(ro?'':'onclick="openForm(\''+e.id+'\')"')+'><div><div class="p">'+esc(e.project)+'</div><div class="s"><b>'+esc(e.projectNo)+'</b> · '+esc(e.type)+' · '+esc(e.stage)+(e.memo?' · '+esc(e.memo):'')+(isPending(e.id)?' <span class="pend">전송 대기</span>':'')+'</div></div><div class="hr">'+e.hours+'<small>h</small></div></div>';
 }
 function renderCarry(){
@@ -555,8 +564,9 @@ function renderHist(){
   $('hist').innerHTML=weeks.map(function(mon){
     var list=byWeek[mon].sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;}), open=OPEN.indexOf(mon)>=0;
     return '<div class="wk"><div class="t"><span>'+md(mon)+' ~ '+md(addDays(mon,6))+' · '+sumOf(list)+'시간</span><span class="badge '+(open?'open':'closed')+'">'+(open?'입력 가능':'보고 완료 · 열람만')+'</span></div><div class="card">'+
-      list.map(function(e){ var x=Object.assign({},e); x.project=mdw(e.date)+' '+e.project; return entHtml(x,!open); }).join('')+'</div></div>';
+      list.map(function(e){ var x=Object.assign({},e); x.project=mdw(e.date)+' '+e.project; return entHtml(x,!open,SELMODE&&open); }).join('')+'</div></div>';
   }).join('');
+  renderSelbar();
 }
 
 // ---------- 공수 폼 ----------
@@ -619,6 +629,34 @@ function delForm(){
   QUEUE=QUEUE.map(function(q){ if(q.op==='save') q.entries=q.entries.filter(function(e){return e.id!==id;}); return q; }).filter(function(q){return q.op!=='save'||q.entries.length;}); ls(K_Q,QUEUE);
   closeForm(); toast('삭제됨');
   if(pending) render(); else enqueue({op:'delete',id:id}).catch(function(){});
+}
+
+// ---------- 기록 여러 건 선택 삭제 ----------
+var SELMODE=false, SELED={};
+function renderSelbar(){
+  var bar=$('selbar'), open=ENTRIES.filter(function(e){return OPEN.indexOf(monOf(e.date))>=0;});
+  if(!open.length){ bar.innerHTML=''; return; }
+  if(!SELMODE){ bar.innerHTML='<span class="n">기록을 눌러 수정할 수 있습니다</span><button onclick="selMode(true)">선택 삭제</button>'; return; }
+  var n=Object.keys(SELED).filter(function(k){return SELED[k];}).length;
+  bar.innerHTML='<span class="n">'+n+'건 선택됨</span><button onclick="selAll()">전체 선택</button><button onclick="selMode(false)">취소</button><button class="del" onclick="delSelected()" '+(n?'':'disabled')+'>선택 삭제</button>';
+}
+function selMode(on){ SELMODE=on; SELED={}; renderHist(); }
+function toggleSel(id){ SELED[id]=!SELED[id]; renderHist(); }
+function selAll(){
+  var open=ENTRIES.filter(function(e){return OPEN.indexOf(monOf(e.date))>=0;});
+  var all=open.every(function(e){return SELED[e.id];});
+  SELED={}; if(!all) open.forEach(function(e){ SELED[e.id]=true; });
+  renderHist();
+}
+function delSelected(){
+  var ids=Object.keys(SELED).filter(function(k){return SELED[k];});
+  if(!ids.length) return;
+  if(!confirm(ids.length+'건을 삭제할까요?')) return;
+  var idset={}; ids.forEach(function(i){idset[i]=1;});
+  ENTRIES=ENTRIES.filter(function(e){return !idset[e.id];}); ls(K_ENT,ENTRIES);
+  QUEUE=QUEUE.map(function(q){ if(q.op==='save') q.entries=q.entries.filter(function(e){return !idset[e.id];}); return q; }).filter(function(q){return q.op!=='save'||q.entries.length;}); ls(K_Q,QUEUE);
+  SELMODE=false; SELED={}; render(); toast(ids.length+'건 삭제');
+  api({action:'deleteEntries',ids:ids,empNo:USER.empNo}).then(function(d){ if(!d.ok) toast(d.msg||'서버 삭제 실패'); }).catch(function(){ toast('서버 연결 오류 — 새로고침 후 확인하세요'); });
 }
 
 // ---------- 부서 현황 (BM) ----------
