@@ -162,6 +162,8 @@ textarea{min-height:64px;resize:vertical}
 .wknav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 .wknav button{font:inherit;font-size:18px;width:40px;height:40px;border:1px solid var(--ln2);border-radius:12px;background:var(--sf);color:var(--tx2);cursor:pointer}
 .wknav .lbl{font-size:15px;font-weight:800;letter-spacing:-.02em;text-align:center}
+.fresh{display:none;font-size:11.5px;font-weight:700;color:var(--ok);background:#E6F6EF;border:1px solid #BFE6D3;border-radius:999px;padding:4px 11px;margin:0 auto 10px;width:max-content}
+.fresh.on{display:block}
 .wknav .lbl small{display:block;font-size:11.5px;color:var(--mu);font-weight:600}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .stats div{background:var(--bg2);border-radius:12px;padding:10px;text-align:center}
@@ -249,6 +251,7 @@ textarea{min-height:64px;resize:vertical}
     <div class="pane" id="paneBm">
       <div class="card">
         <div class="wknav"><button onclick="bmNav(-1)">‹</button><div class="lbl" id="bmWeekLbl"></div><button onclick="bmNav(1)">›</button></div>
+        <div class="fresh" id="bmFresh"></div>
         <div id="bmBody"><div class="empty">불러오는 중…</div></div>
       </div>
       <div class="card" id="bmDetail" style="display:none"></div>
@@ -376,7 +379,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0914c';
+var VER='v0914d';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -667,18 +670,30 @@ function delSelected(){
 }
 
 // ---------- 부서 현황 (BM) ----------
-var BM={week:null,data:null,selEmp:null,bmEmp:''};
-function bmNav(n){ BM.week=addDays(BM.week||addDays(thisMonday(),-7),n*7); if(BM.week>thisMonday()) { BM.week=thisMonday(); return; } bmLoad(); }
-function bmLoad(){
+var BM={week:null,data:null,selEmp:null,bmEmp:'',sig:null};
+function bmNav(n){ BM.week=addDays(BM.week||addDays(thisMonday(),-7),n*7); if(BM.week>thisMonday()) { BM.week=thisMonday(); return; } BM.sig=null; BM.data=null; bmLoad(); }
+function bmLoad(silent){
   if(!BM.week) BM.week=addDays(thisMonday(),-7);
   $('bmWeekLbl').innerHTML=md(BM.week)+' ~ '+md(addDays(BM.week,6))+'<small>'+(BM.week===thisMonday()?'이번 주':(BM.week===addDays(thisMonday(),-7)?'지난주':''))+'</small>';
-  if(!BM.data) $('bmBody').innerHTML='<div class="empty">불러오는 중…</div>'; else toast('현황 갱신 중…');
-  $('bmDetail').style.display='none';
-  api({action:'bmInit',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){
-    if(!d.ok){ $('bmBody').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
-    BM.data=d; BM.bmEmp=d.bmEmp||''; bmRender();
-  }).catch(function(){ $('bmBody').innerHTML='<div class="empty">불러오지 못했습니다.</div>'; });
+  if(!silent){ if(!BM.data) $('bmBody').innerHTML='<div class="empty">불러오는 중…</div>'; else toast('현황 갱신 중…'); }
+  return api({action:'bmInit',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){
+    if(!d.ok){ if(!silent) $('bmBody').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
+    var sig=JSON.stringify([d.entries,d.closed,d.members.length]);
+    if(silent&&sig===BM.sig) return;                 // 바뀐 게 없으면 화면 그대로
+    var changed=silent&&BM.sig&&sig!==BM.sig;
+    BM.sig=sig; BM.data=d; BM.bmEmp=d.bmEmp||'';
+    var y=window.scrollY;
+    bmRender();
+    if(silent) window.scrollTo(0,y);
+    if(changed) bmFresh('방금 갱신됨');
+  }).catch(function(){ if(!silent) $('bmBody').innerHTML='<div class="empty">불러오지 못했습니다.</div>'; });
 }
+function bmFresh(t){ var el=$('bmFresh'); if(!el) return; el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(function(){ el.classList.remove('on'); },4000); }
+// 부서 탭을 보고 있을 때만 30초마다 조용히 갱신
+setInterval(function(){
+  if(TAB!=='Bm'||document.hidden||!navigator.onLine||!USER||!PIN[bmPinKind()]||!BM.data) return;
+  bmLoad(true);
+},30000);
 function bmMatrix(d){
   var by={}; d.entries.forEach(function(e){ var k=e.empNo+'|'+e.date; (by[k]=by[k]||[]).push(e); });
   var days=[]; for(var i=0;i<7;i++) days.push(addDays(d.week,i));
