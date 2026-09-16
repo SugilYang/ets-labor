@@ -321,10 +321,10 @@ textarea{min-height:64px;resize:vertical}
 </div></div>
 
 <!-- 공수 폼 -->
-<div class="sheet" id="sheet" onclick="if(event.target===this)closeForm()">
+<div class="sheet" id="sheet">
   <div class="box">
     <div class="bar"></div>
-    <h3><span id="fTitle">공수 입력</span><button onclick="closeForm()">닫기</button></h3>
+    <h3><span id="fTitle">공수 입력</span><button onclick="askClose()">닫기</button></h3>
     <div class="f"><label>작업일</label><input type="date" id="fDate"></div>
     <div class="f pj" id="pj">
       <label>프로젝트</label>
@@ -358,7 +358,7 @@ textarea{min-height:64px;resize:vertical}
 </div>
 
 <!-- 사용방법 -->
-<div class="sheet" id="helpSheet" onclick="if(event.target===this)closeHelp()">
+<div class="sheet" id="helpSheet">
   <div class="box help">
     <div class="bar"></div>
     <h3><span>사용방법</span><button onclick="closeHelp()">닫기</button></h3>
@@ -376,7 +376,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0914b';
+var VER='v0914c';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -584,9 +584,16 @@ function openForm(id){
   $('acts').className='acts'+(EDIT?' two':'');
   $('acts').innerHTML=(EDIT?'<button class="btn danger" onclick="delForm()">삭제</button>':'')+'<button class="btn" id="fSave" onclick="saveForm()">'+(EDIT?'수정 저장':'저장')+'</button>';
   hide('fMsg'); $('sheet').classList.add('on');
+  FORM0=formSnap();
   if(!base.projectNo) pjEdit();
 }
-function closeForm(){ $('sheet').classList.remove('on'); pjClose(); }
+function formSnap(){ return JSON.stringify([$('fDate').value,PJ?PJ.no:'',$('fHours').value,$('fType').value,$('fStage').value,$('fDuty').value,$('fMemo').value,Object.keys(EXTRA).filter(function(d){return EXTRA[d];}).sort()]); }
+var FORM0=null;
+function askClose(){
+  if(FORM0!==null&&formSnap()!==FORM0&&!confirm('작성 중인 내용이 있습니다. 저장하지 않고 닫을까요?')) return;
+  closeForm();
+}
+function closeForm(){ FORM0=null; $('sheet').classList.remove('on'); pjClose(); }
 function hrs(n){ var el=$('fHours'), v=Math.round(((+el.value||0)+n)*2)/2; el.value=Math.max(0.5,Math.min(24,v)); }
 var EXTRA={};
 function renderExtra(){
