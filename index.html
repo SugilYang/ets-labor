@@ -156,6 +156,9 @@ textarea{min-height:64px;resize:vertical}
 .install .sp{flex:1}
 .install button{font:inherit;font-size:12.5px;font-weight:700;border:0;border-radius:999px;padding:8px 14px;cursor:pointer;background:var(--grad);color:#fff;white-space:nowrap}
 .install .x{background:transparent;color:#B9C4D8;padding:6px 8px;font-size:16px}
+.exban{display:none;background:#FFF1F2;border:1px solid #FECDD3;color:#9F1239;border-radius:14px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.5}
+.exban.on{display:block}
+.exban b{display:block;font-size:14px;margin-bottom:2px}
 .netbar{font-size:12px;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:8px 12px;margin-bottom:10px;display:none}
 
 /* 부서 현황 */
@@ -233,6 +236,7 @@ textarea{min-height:64px;resize:vertical}
       <div class="user"><span id="uName"></span><button onclick="openHelp()">사용방법</button><button onclick="sync();toast('동기화 중…')">새로고침</button><button onclick="logout()">로그아웃</button></div>
     </header>
     <div class="install" id="install"><div><b>홈 화면에 아이콘 추가</b><span id="installMsg"></span></div><span class="sp"></span><button id="installBtn" onclick="installApp()">추가</button><button class="x" onclick="installDismiss()">✕</button></div>
+    <div class="exban" id="exBanner"><b>공수 입력 대상이 아닙니다</b>기록 열람만 가능합니다. 대상 지정이 필요하면 경영관리에 문의하세요.</div>
     <div class="netbar" id="netbar"></div>
 
     <!-- 입력 -->
@@ -295,7 +299,15 @@ textarea{min-height:64px;resize:vertical}
         <p class="hint">예: 9/14(월)부터 운영하면 2026-09-14. 그 전 주에 대한 월요일 메일은 나가지 않고, 앱과 부서 탭에서도 그 전 날짜는 "미입력"으로 표시되지 않습니다.</p>
       </div>
       <div class="card">
+        <h2>공수 입력 제외자 <small>지정하면 앱 입력이 막히고 현황·엑셀·메일에서 빠집니다</small></h2>
+        <div class="tools"><input id="exQ" placeholder="이름 또는 부서 검색" oninput="renderExSearch()" autocomplete="off"><span class="cnt" id="exCnt"></span></div>
+        <div id="exSearch"></div>
+        <div id="exList" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
         <h2>조직도 · 담당 BM <small>다우 조직도 기준, 부서별로 바꿀 수 있음</small></h2>
+        <button class="btn ghost" style="margin-bottom:10px" onclick="adminRefresh()">조직도 · 프로젝트 즉시 새로고침</button>
+        <div class="msg" id="adRefMsg"></div>
         <div id="adOrg"><div class="empty">불러오는 중…</div></div>
         <p class="hint">"자동"은 다우오피스에서 그 부서의 BM 직책자를 그대로 쓰는 것입니다. 한 BM이 여러 부서를 맡으면 각 부서에서 같은 사람을 지정하세요. 지정한 BM에게 그 부서 현황·월요일 메일이 갑니다.</p>
       </div>
@@ -379,7 +391,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0914d';
+var VER='v0914e';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -447,9 +459,12 @@ function enter(){
   });
   setInterval(function(){ if(navigator.onLine&&QUEUE.length) flush(); },120000);
 }
+function blocked(){ return !!(USER&&USER.excluded); }
 function applyUser(){
   $('uName').textContent=USER.name+(USER.dept?' · '+USER.dept:'')+(USER.duty==='BM'?' · BM':'')+' · '+VER;
   $('tbBm').classList.toggle('hide',!(USER.isBm||USER.duty==='BM'||USER.isAdmin));
+  $('fab').classList.toggle('on',TAB==='Input'&&!blocked());
+  $('exBanner').classList.toggle('on',blocked());
   $('tbAdmin').classList.toggle('hide',!USER.isAdmin);
 }
 function sync(){
@@ -491,7 +506,7 @@ function tab(n){
   if(n==='Admin'&&!PIN.PIN_ADMIN){ askPin('PIN_ADMIN','관리자','관리자 PIN을 입력하세요.',function(){ tab('Admin'); }); return; }
   TAB=n;
   ['Input','Hist','Bm','Pj','Admin'].forEach(function(k){ $('pane'+k).classList.toggle('on',k===n); $('tb'+k).classList.toggle('on',k===n); });
-  $('fab').classList.toggle('on',n==='Input'); $('subTitle').textContent=SUB[n];
+  $('fab').classList.toggle('on',n==='Input'&&!blocked()); $('subTitle').textContent=SUB[n];
   if(n==='Bm') bmLoad(); if(n==='Pj') renderPjList(); if(n==='Admin') adminLoad();
   window.scrollTo(0,0);
 }
@@ -543,13 +558,14 @@ function entHtml(e,ro,sel){
 }
 function renderCarry(){
   var box=$('carry'); box.innerHTML='';
-  if(!editable(SEL)||entriesOf(SEL).length) return;
+  if(blocked()||!editable(SEL)||entriesOf(SEL).length) return;
   var prev=ENTRIES.filter(function(e){return e.date<SEL;}).map(function(e){return e.date;}).sort().pop();
   if(!prev) return;
   var src=entriesOf(prev);
   box.innerHTML='<div class="card carry"><h2>'+mdw(prev)+' 기록 '+src.length+'건을 그대로 가져올까요?<small>확인 후 수정 가능</small></h2>'+src.map(function(e){return entHtml(e,true);}).join('')+'<button class="btn" onclick="carryFrom(\''+prev+'\')">확인 — '+mdw(SEL)+'에 저장</button></div>';
 }
 function carryFrom(prev){
+  if(blocked()){ toast('공수 입력 대상이 아닙니다.'); return; }
   var copies=entriesOf(prev).map(function(e){ var c=JSON.parse(JSON.stringify(e)); c.id=uid(); c.date=SEL; return c; });
   ENTRIES=ENTRIES.concat(copies); ls(K_ENT,ENTRIES);
   enqueue({op:'save',entries:copies}).catch(function(){}); toast(copies.length+'건 저장');
@@ -574,6 +590,7 @@ function renderHist(){
 
 // ---------- 공수 폼 ----------
 function openForm(id){
+  if(blocked()){ toast('공수 입력 대상이 아닙니다.'); return; }
   EDIT=id?ENTRIES.filter(function(e){return e.id===id;})[0]:null;
   if(id&&!EDIT) return;
   if(EDIT&&!editable(EDIT.date)){ toast('보고 완료된 기록은 수정할 수 없습니다.'); return; }
@@ -783,14 +800,41 @@ function adminOrgLoad(){
   api({action:'adminOrg',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){
     if(!d.ok){ $('adOrg').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
     ORG=d;
+    renderExSearch();
     $('adMailGrp').innerHTML=(d.groups||[]).map(function(g){return '<option value="'+esc(g.bmEmp)+'">'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')||'<option value="">담당 BM 그룹 없음</option>';
     var opts=function(dep){ return '<option value="">자동'+(dep.autoBmName?' ('+esc(dep.autoBmName)+')':' (BM 없음)')+'</option><option value="OFF"'+(dep.off?' selected':'')+'>사용 안 함 (이 부서는 공수 입력 대상 아님)</option>'+d.people.map(function(p){ return '<option value="'+esc(p.empNo)+'"'+(dep.overridden&&p.empNo===dep.bmEmp?' selected':'')+'>'+esc(p.name)+(p.duty?' · '+esc(p.duty):'')+' ('+esc(p.dept)+')</option>'; }).join(''); };
     $('adOrg').innerHTML=d.depts.map(function(dep){
       return '<div class="item" style="grid-template-columns:1fr;gap:6px"><div><div class="nm"><b>'+esc(dep.name)+'</b> <span style="color:var(--mu);font-size:12px">'+dep.members.length+'명</span>'+(dep.off?' <span class="badge closed">사용 안 함</span>':(dep.overridden?' <span class="badge bm">수동 지정</span>':''))+(!dep.off&&!dep.bmEmp?' <span class="badge" style="background:#FFE4E8;color:var(--warn)">담당 BM 없음</span>':'')+'</div>'+
-        '<div style="font-size:12px;color:var(--mu);margin-top:2px">'+dep.members.map(function(m){return esc(m.name)+(m.duty==='BM'?'<b style="color:var(--c2)">(BM)</b>':'');}).join(', ')+'</div></div>'+
+        '<div style="font-size:12px;color:var(--mu);margin-top:2px">'+dep.members.map(function(m){return (m.excluded?'<s>'+esc(m.name)+'</s>':esc(m.name))+(m.duty==='BM'?'<b style="color:var(--c2)">(BM)</b>':'');}).join(', ')+'</div></div>'+
         '<div class="row" style="align-items:center"><label style="margin:0">담당 BM</label><select onchange="adminAssign(\''+esc(dep.code)+'\',this.value)">'+opts(dep)+'</select></div></div>';
     }).join('');
   }).catch(function(){ $('adOrg').innerHTML='<div class="empty">불러오지 못했습니다.</div>'; });
+}
+var EXLIST=[];
+function renderExSearch(){
+  var q=$('exQ').value.trim().toLowerCase(), box=$('exSearch');
+  if(!ORG){ box.innerHTML=''; return; }
+  var ex={}; EXLIST.forEach(function(x){ ex[x.empNo]=1; });
+  var hits=q?ORG.people.filter(function(p){ return !ex[p.empNo]&&((p.name||'').toLowerCase().indexOf(q)>=0||(p.dept||'').toLowerCase().indexOf(q)>=0); }).slice(0,20):[];
+  $('exCnt').textContent=q?hits.length+'명':'';
+  box.innerHTML=q?(hits.length?hits.map(function(p){ return '<div class="item"><div><div class="nm">'+esc(p.name)+'</div><div class="no" style="color:var(--mu)">'+esc(p.dept)+(p.duty?' · '+esc(p.duty):'')+'</div></div><button onclick="adminExclude(\''+esc(p.empNo)+'\',true,\''+esc(p.name)+'\')">제외</button></div>'; }).join(''):'<div class="empty">검색 결과가 없습니다.</div>'):'';
+}
+function renderExList(){
+  $('exList').innerHTML=EXLIST.length?'<div style="font-size:12px;color:var(--mu);font-weight:700;margin-bottom:4px">제외 중 '+EXLIST.length+'명</div>'+EXLIST.map(function(p){ return '<div class="item"><div><div class="nm">'+esc(p.name)+'</div><div class="no" style="color:var(--mu)">'+esc(p.dept)+'</div></div><button onclick="adminExclude(\''+esc(p.empNo)+'\',false,\''+esc(p.name)+'\')">해제</button></div>'; }).join(''):'<div class="empty">제외자가 없습니다. 위에서 검색해 지정하세요.</div>';
+}
+function adminExclude(emp,on,name){
+  if(on&&!confirm(name+' 님을 공수 입력 대상에서 제외할까요?\n앱에서 입력이 막히고 부서 현황·엑셀·메일에서 빠집니다.')) return;
+  api({action:'adminExclude',empNo:USER.empNo,pin:PIN.PIN_ADMIN,target:emp,on:on}).then(function(d){
+    if(d.ok){ toast(on?name+' 제외됨':name+' 해제됨'); $('exQ').value=''; adminLoad(); adminOrgLoad(); }
+    else toast(d.msg||'실패');
+  }).catch(function(){ toast('서버 연결 오류'); });
+}
+function adminRefresh(){
+  hide('adRefMsg'); toast('새로고침 중…');
+  api({action:'adminRefresh',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){
+    if(d.ok){ show('adRefMsg',true,'반영됨 — 프로젝트 '+d.projects+'건, 인원 '+d.people+'명'); adminOrgLoad(); sync(); }
+    else show('adRefMsg',false,d.msg||'실패');
+  }).catch(function(){ show('adRefMsg',false,'서버 연결 오류'); });
 }
 function adminAssign(code,emp){
   api({action:'adminAssign',empNo:USER.empNo,pin:PIN.PIN_ADMIN,deptCode:code,bmEmp:emp}).then(function(d){ if(d.ok){ toast('저장됨'); adminOrgLoad(); } else toast(d.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
@@ -801,6 +845,7 @@ function adminLoad(){
     if(!d.ok){ toast(d.msg); return; }
     $('adPins').textContent='현재 PIN — 프로젝트 '+d.pins.PIN_PROJECT+' · BM '+d.pins.PIN_BM+' · 관리자 '+d.pins.PIN_ADMIN;
     $('adStart').value=d.startDate||'';
+    EXLIST=d.excluded||[]; renderExList(); renderExSearch();
     $('adCloses').innerHTML=d.closes.length?d.closes.map(function(c){ return '<div class="item"><div><div class="nm"><b>'+esc(c.dept)+'</b> · '+md(c.week)+'~'+md(addDays(c.week,6))+'</div><div class="no" style="color:var(--mu)">'+esc(c.by)+' · '+esc(c.at)+'</div></div><button onclick="adminReopen(\''+esc(c.deptCode)+'\',\''+c.week+'\',\''+esc(c.dept)+'\')">해제</button></div>'; }).join(''):'<div class="empty">아직 보고 완료된 주가 없습니다.</div>';
   }).catch(function(){ toast('서버 연결 오류'); });
 }
