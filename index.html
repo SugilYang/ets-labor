@@ -40,6 +40,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px;ma
 label{display:block;font-size:12px;color:var(--mu);font-weight:600;margin-bottom:4px}
 input,select,textarea{width:100%;font:inherit;font-size:15px;padding:11px 12px;border:1px solid var(--ln2);border-radius:11px;background:var(--sf);color:var(--tx);outline:none;-webkit-appearance:none;appearance:none}
 input:focus,select:focus,textarea:focus{border-color:var(--c2);box-shadow:0 0 0 3px rgba(79,107,255,.14)}
+select.empty{color:var(--mu)}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237482A0' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 textarea{min-height:64px;resize:vertical}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -352,7 +353,7 @@ textarea{min-height:64px;resize:vertical}
     </div>
     <div class="row">
       <div class="f"><label>작업유형</label><select id="fType"></select></div>
-      <div class="f"><label>작업단계</label><select id="fStage"><option>출하 전</option><option>출하 후</option></select></div>
+      <div class="f"><label>작업단계</label><select id="fStage"><option value="">클릭 후 선택</option><option>출하 전</option><option>출하 후</option></select></div>
     </div>
     <div class="f"><label>직무</label><input id="fDuty" autocomplete="off"></div>
     <div class="f"><label>작업내용</label><textarea id="fMemo"></textarea></div>
@@ -391,7 +392,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0914e';
+var VER='v0914f';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -441,7 +442,7 @@ function enter(){
   $('login').style.display='none'; $('app').style.display='block'; $('tabs').style.display='block';
   setTimeout(showInstall,800);
   $('fab').classList.add('on');
-  $('fType').innerHTML=TYPES.map(function(t){return '<option>'+t+'</option>';}).join('');
+  $('fType').innerHTML='<option value="">클릭 후 선택</option>'+TYPES.map(function(t){return '<option>'+t+'</option>';}).join('');
   applyUser();
   OPEN=[thisMonday()]; SEL=today();
   var pc=ls(K_PJ); PROJECTS=(pc&&pc.list)||[]; ENTRIES=ls(K_ENT)||[]; QUEUE=ls(K_Q)||[];
@@ -597,15 +598,16 @@ function openForm(id){
   var last=ls(K_LAST)||{}, base=EDIT||last;
   $('fTitle').textContent=EDIT?'기록 수정':'공수 입력';
   var fd=$('fDate'); fd.min=rangeStart(); fd.max=rangeEnd(); fd.value=EDIT?EDIT.date:(editable(SEL)?SEL:today());
-  setPj(base.projectNo?{no:base.projectNo,name:base.project}:null);
-  $('fHours').value=base.hours||8; $('fType').value=base.type||'조립및제작'; $('fStage').value=base.stage||'출하 전';
+  setPj(EDIT&&EDIT.projectNo?{no:EDIT.projectNo,name:EDIT.project}:null);
+  $('fHours').value=base.hours||8;
+  $('fType').value=EDIT?(EDIT.type||''):''; $('fStage').value=EDIT?(EDIT.stage||''):'';
   $('fDuty').value=base.duty||USER.dept||''; $('fMemo').value=EDIT?(EDIT.memo||''):(base.memo||'');
   $('extraWrap').style.display=EDIT?'none':'block'; if(!EDIT) renderExtra();
   $('acts').className='acts'+(EDIT?' two':'');
   $('acts').innerHTML=(EDIT?'<button class="btn danger" onclick="delForm()">삭제</button>':'')+'<button class="btn" id="fSave" onclick="saveForm()">'+(EDIT?'수정 저장':'저장')+'</button>';
-  hide('fMsg'); $('sheet').classList.add('on');
+  markSel(); hide('fMsg'); $('sheet').classList.add('on');
   FORM0=formSnap();
-  if(!base.projectNo) pjEdit();
+  if(!PJ) pjEdit();
 }
 function formSnap(){ return JSON.stringify([$('fDate').value,PJ?PJ.no:'',$('fHours').value,$('fType').value,$('fStage').value,$('fDuty').value,$('fMemo').value,Object.keys(EXTRA).filter(function(d){return EXTRA[d];}).sort()]); }
 var FORM0=null;
@@ -613,6 +615,8 @@ function askClose(){
   if(FORM0!==null&&formSnap()!==FORM0&&!confirm('작성 중인 내용이 있습니다. 저장하지 않고 닫을까요?')) return;
   closeForm();
 }
+function markSel(){ ['fType','fStage'].forEach(function(id){ $(id).classList.toggle('empty',!$(id).value); }); }
+['fType','fStage'].forEach(function(id){ document.getElementById(id).addEventListener('change',markSel); });
 function closeForm(){ FORM0=null; $('sheet').classList.remove('on'); pjClose(); }
 function hrs(n){ var el=$('fHours'), v=Math.round(((+el.value||0)+n)*2)/2; el.value=Math.max(0.5,Math.min(24,v)); }
 var EXTRA={};
@@ -639,6 +643,8 @@ function saveForm(){
   if(!PJ){ show('fMsg',false,'프로젝트를 선택하세요.'); return; }
   if(!date||!editable(date)){ show('fMsg',false,'작업일은 입력 가능한 주 안에서 선택하세요.'); return; }
   if(!(hours>0)){ show('fMsg',false,'공수를 입력하세요.'); return; }
+  if(!$('fType').value){ show('fMsg',false,'작업유형을 선택하세요.'); return; }
+  if(!$('fStage').value){ show('fMsg',false,'작업단계를 선택하세요.'); return; }
   if(!$('fDuty').value.trim()){ show('fMsg',false,'직무를 입력하세요.'); return; }
   var base={project:PJ.name,projectNo:PJ.no,hours:hours,unit:'시간',type:$('fType').value,stage:$('fStage').value,duty:$('fDuty').value.trim(),memo:$('fMemo').value.trim(),empNo:USER.empNo,name:USER.name,dept:USER.dept||''};
   ls(K_LAST,base);
