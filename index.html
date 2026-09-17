@@ -322,6 +322,9 @@ textarea{min-height:64px;resize:vertical}
         <div class="row"><div class="f"><label>어느 BM 그룹으로</label><select id="adMailGrp"></select></div><div class="f"><label>어느 주 자료로</label><select id="adMailWeek"><option value="this">이번 주 (진행 중)</option><option value="last">지난주</option></select></div></div>
         <button class="btn ghost" onclick="adminTestMail()">테스트 메일 보내기</button>
         <div class="msg" id="adMailMsg"></div>
+        <p class="hint" style="margin-top:14px">매주 금요일 16시에는 이번 주(월~목) 미입력자에게 다우오피스 알림이 개인별로 발송됩니다. 아래는 본인에게만 테스트 발송합니다.</p>
+        <button class="btn ghost" onclick="adminTestNoti()">금요일 알림 테스트</button>
+        <div class="msg" id="adNotiMsg"></div>
       </div>
     </div>
   </div>
@@ -392,7 +395,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0914f';
+var VER='v0914g';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -870,6 +873,10 @@ function adminSetPin(){
 function adminReopen(code,week,dept){
   if(!confirm(dept+' '+md(week)+'~'+md(addDays(week,6))+' 주의 보고 완료를 해제할까요?\n해제하면 소속원이 다시 입력·수정할 수 있습니다.')) return;
   api({action:'adminReopen',empNo:USER.empNo,pin:PIN.PIN_ADMIN,deptCode:code,week:week}).then(function(d){ if(d.ok){ toast('해제됨'); adminLoad(); } else toast(d.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
+}
+function adminTestNoti(){
+  hide('adNotiMsg'); toast('발송 중…');
+  api({action:'adminTestNoti',empNo:USER.empNo,pin:PIN.PIN_ADMIN}).then(function(d){ show('adNotiMsg',d.ok,d.msg||(d.ok?'발송됨':'실패')); }).catch(function(){ show('adNotiMsg',false,'서버 연결 오류'); });
 }
 function adminTestMail(){
   hide('adMailMsg'); toast('발송 중… (10초 정도)');
