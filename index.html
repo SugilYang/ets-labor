@@ -433,7 +433,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0921a';
+var VER='v0921c';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -803,10 +803,17 @@ function apprCard(a){
     setTimeout(function(){ apprDetail(a.id); },10);
   } else {
     if(a.reason) body+='<div class="sub" style="color:var(--warn)">반려 사유: '+esc(a.reason)+'</div>';
-    body+='<div class="sub">'+esc(a.doneAt)+'</div>';
+    body+='<div class="sub">'+esc(a.doneAt)+(a.apprName?' · 결재 '+esc(a.apprName):'')+'</div>';
     if(a.imageUrl) body+='<a class="img" href="'+esc(a.imageUrl)+'" target="_blank">결재 문서 이미지 열기 →</a>';
+    body+='<div style="margin-top:8px"><button class="btn ghost sm" onclick="apprToggle(\''+a.id+'\')">내용 보기</button></div><div id="ad_'+a.id+'" style="display:none;margin-top:8px"></div>';
+    if(USER.isAdmin) body+='<div style="text-align:right;margin-top:6px"><button class="btn danger sm" onclick="apprDelete(\''+a.id+'\')">삭제</button></div>';
   }
   return body+'</div>';
+}
+function apprToggle(id){
+  var el=$('ad_'+id); if(!el) return;
+  if(el.style.display==='none'){ el.style.display='block'; if(!el.innerHTML) { el.innerHTML='<div class="empty" style="padding:8px 0">불러오는 중…</div>'; apprDetail(id); } }
+  else el.style.display='none';
 }
 function apprDetail(id){
   api({action:'apprDetail',empNo:USER.empNo,id:id}).then(function(d){
@@ -839,6 +846,10 @@ function apprApprove(id,dept){
       if(d.ok){ toast(d.msg||'승인 완료'); apprLoad(); } else toast(d.msg||'실패');
     }).catch(function(){ toast('서버 연결 오류'); });
   });
+}
+function apprDelete(id){
+  if(!confirm('이 결재 기록을 삭제할까요?\n서명과 결재 문서 이미지 파일도 함께 삭제됩니다.')) return;
+  api({action:'apprDelete',empNo:USER.empNo,id:id}).then(function(d){ if(d.ok){ toast('삭제됨'); apprLoad(); } else toast(d.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
 }
 function apprReject(id){
   var r=prompt('반려 사유를 입력하세요.');
