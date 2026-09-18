@@ -186,12 +186,12 @@ textarea{min-height:64px;resize:vertical}
 .doc .meta div{flex:1;border-radius:8px;padding:6px;text-align:center}
 .doc .meta b{display:block;font-size:15px;font-weight:800}.doc .meta span{font-size:8.5px;color:#7482A0}
 .doc h3{font-size:10.5px;margin:0 0 4px}
-.doc table.g{width:100%;border-collapse:collapse;font-size:8.5px}
-.doc .g th{background:#F3F5F9;color:#7482A0;font-weight:700;padding:0 2px;height:18px;line-height:18px;border:1px solid #E4E9F5;font-size:8px}
-.doc .g td{border:1px solid #EEF1F6;padding:0 2px;height:13px;line-height:13px;font-size:8px;text-align:center;white-space:nowrap}
-.doc .g td.nm{text-align:left;font-weight:700;padding-left:6px;width:78px}.doc .g td.dp{text-align:left;color:#7482A0;padding-left:6px;width:66px}
-.doc .g td.ok{font-weight:600}.doc .g td.miss{background:#FFE4E8;color:#B3364A;font-weight:800;font-size:7.5px}.doc .g td.off{background:#F7F8FB}
-.doc .g td.leave{color:#7C3AED;font-weight:800;font-size:7.5px}.doc .g td.tot{color:#CFD8EC;font-weight:800}.doc .g td.tot.bad{color:#B3364A}
+.doc table.grid{width:100%;border-collapse:collapse;font-size:8.5px}
+.doc .grid th{background:#F3F5F9;color:#7482A0;font-weight:700;padding:0 2px;height:18px;line-height:18px;border:1px solid #E4E9F5;font-size:8px}
+.doc .grid td{border:1px solid #EEF1F6;padding:0 2px;height:13px;line-height:13px;font-size:8px;text-align:center;white-space:nowrap}
+.doc .grid td.nm{text-align:left;font-weight:700;padding-left:6px;width:78px}.doc .grid td.dp{text-align:left;color:#7482A0;padding-left:6px;width:66px}
+.doc .grid td.ok{font-weight:600}.doc .grid td.miss{background:#FFE4E8;color:#B3364A;font-weight:800;font-size:7.5px}.doc .grid td.off{background:#F7F8FB}
+.doc .grid td.leave{color:#7C3AED;font-weight:800;font-size:7.5px}.doc .grid td.tot{color:#CFD8EC;font-weight:800}.doc .grid td.tot.bad{color:#B3364A}
 .doc .foot{font-size:7.5px;color:#7482A0;text-align:center;margin-top:8px}
 .prog{position:fixed;inset:0;background:rgba(11,15,26,.5);display:none;z-index:80;align-items:center;justify-content:center;padding:24px}
 .prog.on{display:flex}
@@ -469,7 +469,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0921h';
+var VER='v0921i';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -936,7 +936,7 @@ function buildApprovalImage(id,apprSign){
         '<div class="meta"><div style="background:#F3F5F9"><b>'+d.members.length+'</b><span>소속 인원</span></div><div style="background:#E6F6EF"><b style="color:#0B7A4F">'+(d.members.length-miss)+'</b><span>입력 완료</span></div><div style="background:#FDECEE"><b style="color:#B3364A">'+miss+'</b><span>미입력</span></div></div>'+
         '<h3>부서원 입력 현황</h3>'
       : '<div class="cont">ETS 실적공수 · 주간 보고 — '+esc(a.dept)+' · '+mdw(week)+' ~ '+mdw(addDays(week,6))+' (이어서)</div>';
-    return '<div class="doc">'+head+'<table class="g">'+thead+ch.join('')+'</table>'+(pi===total-1?foot:'')+'<div class="pg">'+(pi+1)+' / '+total+'</div></div>';
+    return '<div class="doc">'+head+'<table class="grid">'+thead+ch.join('')+'</table>'+(pi===total-1?foot:'')+'<div class="pg">'+(pi+1)+' / '+total+'</div></div>';
   }).join('');
   var w=$('docwrap'); w.innerHTML=html;
   return new Promise(function(res){ setTimeout(res,150); }).then(function(){
