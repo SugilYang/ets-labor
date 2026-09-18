@@ -12,6 +12,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>ETS 실적공수</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root{--bg:#FAFBFF;--bg2:#F1F4FC;--sf:#fff;--tx:#0B0F1A;--tx2:#3E4A63;--mu:#7482A0;--ln:#E4E9F5;--ln2:#CFD8EC;
   --c1:#0E9B8C;--c2:#4F6BFF;--c3:#8B5CF6;--ok:#10B981;--warn:#E11D48;--amber:#D97706;
@@ -167,6 +168,39 @@ textarea{min-height:64px;resize:vertical}
 .apc .mini span{font-size:10.5px;color:var(--mu)}
 .apc .acts2{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:10px}
 .apc a.img{display:inline-block;font-size:12px;font-weight:700;color:var(--c2);text-decoration:none;margin-top:6px}
+.docwrap{position:fixed;left:-3000px;top:0;width:595px;background:#fff;font-family:"Pretendard Variable",Pretendard,"Malgun Gothic",sans-serif;color:#0B0F1A;letter-spacing:-.01em}
+.doc{width:595px;height:842px;padding:26px 34px 24px;box-sizing:border-box;position:relative;overflow:hidden;background:#fff}
+.doc .pg{position:absolute;left:0;right:0;bottom:9px;text-align:center;font-size:7.5px;color:#7482A0}
+.doc .cont{font-size:9px;color:#7482A0;margin-bottom:8px}
+.doc .top{display:flex;justify-content:space-between;align-items:flex-start}
+.doc .t1{font-size:10px;letter-spacing:2px;color:#0E9B8C;font-weight:700}
+.doc .t2{font-size:17px;font-weight:800;margin-top:3px;line-height:1.25;max-width:330px}
+.doc .t3{font-size:10px;color:#7482A0;margin-top:3px}
+.doc .ap{border-collapse:collapse}
+.doc .ap th{background:#F3F5F9;font-size:9px;color:#7482A0;font-weight:700;padding:4px 0;border:1px solid #CFD8EC;width:96px}
+.doc .ap td{border:1px solid #CFD8EC;text-align:center;vertical-align:middle;padding:0}
+.doc .ap .nm{font-size:10.5px;font-weight:800;padding:5px 0 2px}
+.doc .ap .sg{height:40px;display:flex;align-items:center;justify-content:center}.doc .ap .sg img{max-height:36px;max-width:84px}
+.doc .ap .dt{font-size:7.5px;color:#7482A0;padding:2px 0 4px}
+.doc .meta{display:flex;gap:8px;margin:12px 0 10px}
+.doc .meta div{flex:1;border-radius:8px;padding:6px;text-align:center}
+.doc .meta b{display:block;font-size:15px;font-weight:800}.doc .meta span{font-size:8.5px;color:#7482A0}
+.doc h3{font-size:10.5px;margin:0 0 4px}
+.doc table.g{width:100%;border-collapse:collapse;font-size:8.5px}
+.doc .g th{background:#F3F5F9;color:#7482A0;font-weight:700;padding:0 2px;height:18px;line-height:18px;border:1px solid #E4E9F5;font-size:8px}
+.doc .g td{border:1px solid #EEF1F6;padding:0 2px;height:13px;line-height:13px;font-size:8px;text-align:center;white-space:nowrap}
+.doc .g td.nm{text-align:left;font-weight:700;padding-left:6px;width:78px}.doc .g td.dp{text-align:left;color:#7482A0;padding-left:6px;width:66px}
+.doc .g td.ok{font-weight:600}.doc .g td.miss{background:#FFE4E8;color:#B3364A;font-weight:800;font-size:7.5px}.doc .g td.off{background:#F7F8FB}
+.doc .g td.leave{color:#7C3AED;font-weight:800;font-size:7.5px}.doc .g td.tot{color:#CFD8EC;font-weight:800}.doc .g td.tot.bad{color:#B3364A}
+.doc .foot{font-size:7.5px;color:#7482A0;text-align:center;margin-top:8px}
+.prog{position:fixed;inset:0;background:rgba(11,15,26,.5);display:none;z-index:80;align-items:center;justify-content:center;padding:24px}
+.prog.on{display:flex}
+.prog .box{background:var(--sf);border-radius:20px;padding:22px;width:100%;max-width:360px;box-shadow:var(--sh2)}
+.prog h3{font-size:16px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px}
+.prog p{font-size:12.5px;color:var(--mu);margin-bottom:14px;min-height:18px}
+.prog .bar{height:10px;border-radius:999px;background:var(--bg2);overflow:hidden}
+.prog .fill{height:100%;width:0;border-radius:999px;background:var(--grad);transition:width .4s ease}
+.prog .pct{font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;color:var(--c2);text-align:right;margin-top:6px}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--tx);color:#fff;font-size:13.5px;font-weight:600;padding:10px 16px;border-radius:999px;opacity:0;transition:.25s;z-index:70;pointer-events:none;white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
 .toast.on{opacity:1;transform:translateX(-50%)}
 .install{display:none;align-items:center;gap:10px;background:var(--tx);color:#fff;border-radius:14px;padding:10px 12px 10px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.45}
@@ -430,10 +464,12 @@ textarea{min-height:64px;resize:vertical}
     <div class="msg" id="signMsg"></div>
   </div>
 </div>
+<div class="prog" id="prog"><div class="box"><h3 id="progT">처리 중</h3><p id="progM"></p><div class="bar"><div class="fill" id="progF"></div></div><div class="pct" id="progP">0%</div></div></div>
+<div class="docwrap" id="docwrap"></div>
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0921c';
+var VER='v0921h';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -767,6 +803,13 @@ function signSubmit(){
 
 // ---------- 결재 ----------
 var APPR={pending:[],done:[],detail:{}};
+function prog(pct,title,msg){
+  var el=$('prog');
+  if(pct===null){ el.classList.remove('on'); return; }
+  el.classList.add('on'); if(title) $('progT').textContent=title; if(msg!==undefined) $('progM').textContent=msg;
+  $('progF').style.width=pct+'%'; $('progP').textContent=Math.round(pct)+'%';
+}
+function nowKst(){ var d=kstNow(); return ymd(d)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
 function apprCount(){
   api({action:'apprInbox',empNo:USER.empNo}).then(function(d){
     if(!d.ok) return;
@@ -819,6 +862,7 @@ function apprDetail(id){
   api({action:'apprDetail',empNo:USER.empNo,id:id}).then(function(d){
     var el=$('ad_'+id); if(!el) return;
     if(!d.ok){ el.innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
+    APPR.detail[id]=d;
     var by={}; d.entries.forEach(function(e){ by[e.empNo+'|'+e.date]=(by[e.empNo+'|'+e.date]||0)+e.hours; });
     var days=[]; for(var i=0;i<7;i++) days.push(addDays(d.week,i));
     var miss=0, rows=d.members.map(function(m){
@@ -841,11 +885,63 @@ function apprDetail(id){
 }
 function apprApprove(id,dept){
   signOpen('결재 승인 서명',dept+' 주간보고를 승인합니다. 아래에 서명해 주세요.',function(sign){
-    toast('승인 처리 중… (문서 생성에 10초 정도)');
-    api({action:'apprAct',empNo:USER.empNo,id:id,act:'approve',sign:sign}).then(function(d){
-      if(d.ok){ toast(d.msg||'승인 완료'); apprLoad(); } else toast(d.msg||'실패');
-    }).catch(function(){ toast('서버 연결 오류'); });
+    prog(5,'결재 승인 처리 중','결재 자료 확인 중…');
+    var go=function(image){
+      prog(75,'결재 승인 처리 중','서버에 저장하고 알림을 보내는 중…');
+      var t=setInterval(function(){ var w=parseFloat($('progF').style.width)||75; if(w<95) prog(w+2); },400);
+      api({action:'apprAct',empNo:USER.empNo,id:id,act:'approve',sign:sign,image:image||''}).then(function(d){
+        clearInterval(t); prog(100,'완료','결재 문서가 저장되었습니다.');
+        setTimeout(function(){ prog(null); if(d.ok){ toast(d.msg||'승인 완료'); apprLoad(); } else toast(d.msg||'실패'); },700);
+      }).catch(function(){ clearInterval(t); prog(null); toast('서버 연결 오류'); });
+    };
+    var run=function(){
+      prog(25,'결재 승인 처리 중','결재 문서 이미지 만드는 중…');
+      buildApprovalImage(id,sign).then(function(img){ prog(65,'결재 승인 처리 중','이미지 생성 완료'); return img; }).then(go).catch(function(e){ console.error(e); go(''); });
+    };
+    if(APPR.detail[id]) run();
+    else api({action:'apprDetail',empNo:USER.empNo,id:id}).then(function(d){ if(d.ok) APPR.detail[id]=d; prog(15); run(); }).catch(function(){ prog(null); toast('서버 연결 오류'); });
   });
+}
+// 결재서류를 화면 밖에서 그려 PNG로
+function buildApprovalImage(id,apprSign){
+  var d=APPR.detail[id], a=d.appr, week=d.week, days=[]; for(var i=0;i<7;i++) days.push(addDays(week,i));
+  var by={}, leaveSet={};
+  d.entries.forEach(function(e){ by[e.empNo+'|'+e.date]=(by[e.empNo+'|'+e.date]||0)+e.hours; if(e.type==='연차') leaveSet[e.empNo+'|'+e.date]=1; });
+  var START0=d.startDate||'';
+  var miss=0, rows=d.members.map(function(m){
+    var n=0, tds=days.map(function(day){
+      var h=by[m.empNo+'|'+day]||0, work=dow(day)<5&&d.holidays.indexOf(day)<0&&(!START0||day>=START0);
+      if(leaveSet[m.empNo+'|'+day]) return '<td class="leave">연차</td>';
+      if(h) return '<td class="ok">'+h+'</td>';
+      if(work){ n++; return '<td class="miss">미입력</td>'; }
+      return '<td class="off"></td>';
+    }).join('');
+    if(n) miss++;
+    return '<tr><td class="nm">'+esc(m.name)+(m.duty==='BM'?' (BM)':'')+'</td><td class="dp">'+esc(m.dept)+'</td>'+tds+'<td class="tot'+(n?' bad':'')+'">'+(n||'')+'</td></tr>';
+  }).join('');
+  var yr=week.slice(0,4);
+  var rowArr=rows.split('</tr>').filter(Boolean).map(function(r){return r+'</tr>';});
+  var thead='<tr><th style="text-align:left;padding-left:6px">이름</th><th style="text-align:left;padding-left:6px">부서</th>'+
+    days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th style="'+(off?'color:#B3364A':'')+'">'+DOW[dow(s)]+' '+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr>';
+  var chunks=[], first=40, rest=54;
+  chunks.push(rowArr.slice(0,first)); for(var k=first;k<rowArr.length;k+=rest) chunks.push(rowArr.slice(k,k+rest));
+  if(!chunks[0].length) chunks=[[]];
+  var total=chunks.length, foot='<div class="foot">ETS 실적공수 시스템 · 본 문서는 앱 결재 승인 시 자동 생성되었습니다</div>';
+  var html=chunks.map(function(ch,pi){
+    var head = pi===0
+      ? '<div class="top"><div><div class="t1">ETS 실적공수 · 주간 보고</div><div class="t2">'+esc(a.dept)+'</div><div class="t3">'+yr+'년 '+mdw(week)+' ~ '+mdw(addDays(week,6))+' 작업분 · 문서번호 '+esc(a.id)+'</div></div>'+
+        '<table class="ap"><tr><th>작성 (BM)</th><th>승인</th></tr><tr>'+
+        '<td><div class="nm">'+esc(a.bmName)+'</div><div class="sg">'+(d.bmSign?'<img src="'+d.bmSign+'">':'')+'</div><div class="dt">'+esc(a.submittedAt)+'</div></td>'+
+        '<td><div class="nm">'+esc(USER.name)+'</div><div class="sg"><img src="'+apprSign+'"></div><div class="dt">'+nowKst()+'</div></td></tr></table></div>'+
+        '<div class="meta"><div style="background:#F3F5F9"><b>'+d.members.length+'</b><span>소속 인원</span></div><div style="background:#E6F6EF"><b style="color:#0B7A4F">'+(d.members.length-miss)+'</b><span>입력 완료</span></div><div style="background:#FDECEE"><b style="color:#B3364A">'+miss+'</b><span>미입력</span></div></div>'+
+        '<h3>부서원 입력 현황</h3>'
+      : '<div class="cont">ETS 실적공수 · 주간 보고 — '+esc(a.dept)+' · '+mdw(week)+' ~ '+mdw(addDays(week,6))+' (이어서)</div>';
+    return '<div class="doc">'+head+'<table class="g">'+thead+ch.join('')+'</table>'+(pi===total-1?foot:'')+'<div class="pg">'+(pi+1)+' / '+total+'</div></div>';
+  }).join('');
+  var w=$('docwrap'); w.innerHTML=html;
+  return new Promise(function(res){ setTimeout(res,150); }).then(function(){
+    return html2canvas(w,{scale:4,backgroundColor:'#ffffff',useCORS:true,logging:false});  // A4 300dpi급
+  }).then(function(cv){ w.innerHTML=''; return cv.toDataURL('image/png'); });
 }
 function apprDelete(id){
   if(!confirm('이 결재 기록을 삭제할까요?\n서명과 결재 문서 이미지 파일도 함께 삭제됩니다.')) return;
@@ -929,11 +1025,14 @@ function bmSel(emp,keep){
 function bmClose(){
   if(!confirm(BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주를 보고 완료할까요?\n완료하면 소속원이 이 주의 기록을 수정할 수 없고, 상위 결재자에게 결재 요청이 올라갑니다.')) return;
   signOpen('보고 완료 서명',BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주간보고에 서명합니다.',function(sign){
-    toast('상신 중…');
+    prog(20,'보고 완료 처리 중','서명 저장 및 결재 요청 중…');
+    var t=setInterval(function(){ var w=parseFloat($('progF').style.width)||20; if(w<90) prog(w+3); },400);
     api({action:'bmClose',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp,sign:sign}).then(function(d){
-      if(d.ok){ var a=d.approval||{}; toast(a.pending?('결재 요청 완료 — '+a.approver+'님에게 상신'):'보고 완료 (결재자 미지정)'); BM.sig=null; bmLoad(); }
-      else toast(d.msg||'실패');
-    }).catch(function(){ toast('서버 연결 오류'); });
+      clearInterval(t); prog(100,'완료',d.ok?'상신되었습니다.':'');
+      setTimeout(function(){ prog(null);
+        if(d.ok){ var a=d.approval||{}; toast(a.pending?('결재 요청 완료 — '+a.approver+'님에게 상신'):'보고 완료 (결재자 미지정)'); BM.sig=null; bmLoad(); }
+        else toast(d.msg||'실패'); },600);
+    }).catch(function(){ clearInterval(t); prog(null); toast('서버 연결 오류'); });
   });
 }
 function bmExcel(){
