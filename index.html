@@ -433,7 +433,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0914h';
+var VER='v0921a';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -836,7 +836,7 @@ function apprApprove(id,dept){
   signOpen('결재 승인 서명',dept+' 주간보고를 승인합니다. 아래에 서명해 주세요.',function(sign){
     toast('승인 처리 중… (문서 생성에 10초 정도)');
     api({action:'apprAct',empNo:USER.empNo,id:id,act:'approve',sign:sign}).then(function(d){
-      if(d.ok){ toast('승인 완료'); apprLoad(); } else toast(d.msg||'실패');
+      if(d.ok){ toast(d.msg||'승인 완료'); apprLoad(); } else toast(d.msg||'실패');
     }).catch(function(){ toast('서버 연결 오류'); });
   });
 }
