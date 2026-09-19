@@ -465,11 +465,19 @@ textarea{min-height:64px;resize:vertical}
   </div>
 </div>
 <div class="prog" id="prog"><div class="box"><h3 id="progT">처리 중</h3><p id="progM"></p><div class="bar"><div class="fill" id="progF"></div></div><div class="pct" id="progP">0%</div></div></div>
+<div class="sheet" id="imgSheet">
+  <div class="box">
+    <div class="bar"></div>
+    <h3><span id="imgTitle">결재 문서</span><button onclick="$('imgSheet').classList.remove('on')">닫기</button></h3>
+    <div style="border:1px solid var(--ln);border-radius:12px;overflow:auto;max-height:65svh;background:#fff"><img id="imgView" style="width:100%;display:block"></div>
+    <div class="acts" style="margin-top:10px"><button class="btn" onclick="imgDownload()">이미지 다운로드</button></div>
+  </div>
+</div>
 <div class="docwrap" id="docwrap"></div>
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0921i';
+var VER='v0921k';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -541,7 +549,7 @@ function enter(){
 function blocked(){ return !!(USER&&USER.excluded); }
 function applyUser(){
   $('uName').textContent=USER.name+(USER.dept?' · '+USER.dept:'')+(USER.duty==='BM'?' · BM':'')+' · '+VER;
-  $('tbBm').classList.toggle('hide',!(USER.isBm||USER.duty==='BM'||USER.isAdmin));
+  $('tbBm').classList.toggle('hide',!(USER.isBm||USER.duty==='BM'||USER.isAdmin||USER.isViewer));
   $('fab').classList.toggle('on',TAB==='Input'&&!blocked());
   $('exBanner').classList.toggle('on',blocked());
   $('tbAdmin').classList.toggle('hide',!USER.isAdmin);
@@ -847,8 +855,7 @@ function apprCard(a){
   } else {
     if(a.reason) body+='<div class="sub" style="color:var(--warn)">반려 사유: '+esc(a.reason)+'</div>';
     body+='<div class="sub">'+esc(a.doneAt)+(a.apprName?' · 결재 '+esc(a.apprName):'')+'</div>';
-    if(a.imageUrl) body+='<a class="img" href="'+esc(a.imageUrl)+'" target="_blank">결재 문서 이미지 열기 →</a>';
-    body+='<div style="margin-top:8px"><button class="btn ghost sm" onclick="apprToggle(\''+a.id+'\')">내용 보기</button></div><div id="ad_'+a.id+'" style="display:none;margin-top:8px"></div>';
+    body+='<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'+(a.imageUrl?'<button class="btn sm" onclick="apprImage(\''+a.id+'\')">결재 문서 보기</button>':'')+'<button class="btn ghost sm" onclick="apprToggle(\''+a.id+'\')">내용 보기</button></div><div id="ad_'+a.id+'" style="display:none;margin-top:8px"></div>';
     if(USER.isAdmin) body+='<div style="text-align:right;margin-top:6px"><button class="btn danger sm" onclick="apprDelete(\''+a.id+'\')">삭제</button></div>';
   }
   return body+'</div>';
@@ -943,6 +950,19 @@ function buildApprovalImage(id,apprSign){
     return html2canvas(w,{scale:4,backgroundColor:'#ffffff',useCORS:true,logging:false});  // A4 300dpi급
   }).then(function(cv){ w.innerHTML=''; return cv.toDataURL('image/png'); });
 }
+var IMG={name:'',data:''};
+function apprImage(id){
+  toast('결재 문서 불러오는 중…');
+  api({action:'apprImage',empNo:USER.empNo,id:id}).then(function(d){
+    if(!d.ok){ toast(d.msg||'실패'); return; }
+    IMG.name=d.name; IMG.data='data:image/png;base64,'+d.b64;
+    $('imgTitle').textContent=d.name; $('imgView').src=IMG.data; $('imgSheet').classList.add('on');
+  }).catch(function(){ toast('서버 연결 오류'); });
+}
+function imgDownload(){
+  if(!IMG.data) return;
+  var a=document.createElement('a'); a.href=IMG.data; a.download=IMG.name||'결재문서.png'; document.body.appendChild(a); a.click(); a.remove();
+}
 function apprDelete(id){
   if(!confirm('이 결재 기록을 삭제할까요?\n서명과 결재 문서 이미지 파일도 함께 삭제됩니다.')) return;
   api({action:'apprDelete',empNo:USER.empNo,id:id}).then(function(d){ if(d.ok){ toast('삭제됨'); apprLoad(); } else toast(d.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
@@ -1000,7 +1020,7 @@ function bmRender(){
   var isThis=d.week===d.thisMonday;
   var multi=(d.deptNames||[]).length>1;
   var html='';
-  if(d.groups) html+='<div class="f"><label>담당 BM 그룹 (관리자)</label><select onchange="BM.bmEmp=this.value;BM.selEmp=null;bmLoad()">'+d.groups.map(function(g){return '<option value="'+esc(g.bmEmp)+'"'+(g.bmEmp===d.bmEmp?' selected':'')+'>'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')+'</select></div>';
+  if(d.groups) html+='<div class="f"><label>담당 BM 그룹'+(d.readOnly?' (열람)':' (관리자)')+'</label><select onchange="BM.bmEmp=this.value;BM.selEmp=null;bmLoad()">'+d.groups.map(function(g){return '<option value="'+esc(g.bmEmp)+'"'+(g.bmEmp===d.bmEmp?' selected':'')+'>'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')+'</select></div>';
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px"><b style="font-size:13.5px">'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">보고 완료</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">보고 완료 전</span>'))+'</div>';
   html+='<div class="stats"><div><b>'+mx.length+'</b><span>소속 인원</span></div><div class="ok"><b>'+(mx.length-miss.length)+'</b><span>입력 완료</span></div><div class="miss"><b>'+miss.length+'</b><span>미입력</span></div></div>';
   html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
@@ -1013,7 +1033,7 @@ function bmRender(){
     }
     return row; }).join('');
   html+='</tbody></table></div>';
-  html+='<div class="bmacts"><button class="btn ghost" onclick="bmExcel()">엑셀 다운로드</button>'+(d.closed||isThis?'<button class="btn dark" disabled>'+(d.closed?'보고 완료됨':'이번 주는 진행 중')+'</button>':'<button class="btn dark" onclick="bmClose()">보고 완료</button>')+'</div>';
+  html+='<div class="bmacts"><button class="btn ghost" onclick="bmExcel()">엑셀 다운로드</button>'+(d.readOnly?'<button class="btn dark" disabled>열람 전용</button>':(d.closed||isThis?'<button class="btn dark" disabled>'+(d.closed?'보고 완료됨':'이번 주는 진행 중')+'</button>':'<button class="btn dark" onclick="bmClose()">보고 완료</button>'))+'</div>';
   html+='<p class="hint">평일 빈칸은 미입력(빨강), 주말·공휴일은 회색. 이름을 누르면 상세 기록이 보입니다. 미입력자는 앱에서 직접 채우게 하고, 확인이 끝나면 [보고 완료] 후 엑셀을 받으세요.</p>';
   $('bmBody').innerHTML=html;
   $('bmDetail').style.display='none';
