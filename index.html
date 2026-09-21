@@ -35,10 +35,11 @@ header{display:flex;align-items:center;justify-content:space-between;gap:10px;ma
 .brand .tp{white-space:nowrap;font-family:'Playfair Display',Georgia,'Noto Serif KR',serif;font-weight:800;font-size:12.5px;line-height:18px;letter-spacing:.03em;color:var(--tx2);-webkit-text-stroke:.2px currentColor}
 .brand .tp b{color:#E11D48;font-weight:900;font-size:1.25em}
 header{display:block}
-.htop{display:flex;align-items:center;gap:8px;margin-bottom:10px;white-space:nowrap;overflow:hidden}
-.htop .nn{font-family:"Pretendard Variable",Pretendard,sans-serif;font-size:14px;line-height:18px;font-weight:900;letter-spacing:.06em;color:var(--tx);padding-left:8px;border-left:2px solid var(--ln2)}
+.htop{display:flex;align-items:center;flex-wrap:wrap;gap:6px 7px;margin-bottom:10px;white-space:nowrap}
+.htop .logo.sm{height:min(18px,4.4vw)}
+.htop .nn{font-family:"Pretendard Variable",Pretendard,sans-serif;font-size:min(14px,3.3vw);line-height:18px;font-weight:900;letter-spacing:.04em;color:var(--tx);padding-left:7px;border-left:2px solid var(--ln2)}
 .htop .nn b{color:var(--c1)}
-.htop .tp{font-family:'Playfair Display',Georgia,'Noto Serif KR',serif;font-weight:800;font-size:11.5px;line-height:18px;letter-spacing:.03em;color:var(--tx2);padding-left:8px;border-left:2px solid var(--ln2)}
+.htop .tp{font-family:'Playfair Display',Georgia,'Noto Serif KR',serif;font-weight:800;font-size:min(11.5px,2.75vw);line-height:18px;letter-spacing:.02em;color:var(--tx2);padding-left:7px;border-left:2px solid var(--ln2)}
 .htop .tp b{color:#E11D48;font-weight:900;font-size:1.25em}
 .hrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .brand .t{font-size:17px;font-weight:800;letter-spacing:-.03em;line-height:1.15}
@@ -501,7 +502,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0921r';
+var VER='v0921s';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
