@@ -380,9 +380,9 @@ textarea{min-height:64px;resize:vertical}
         <p class="hint">예: 9/14(월)부터 운영하면 2026-09-14. 그 전 주에 대한 월요일 메일은 나가지 않고, 앱과 부서 탭에서도 그 전 날짜는 "미입력"으로 표시되지 않습니다.</p>
       </div>
       <div class="card">
-        <h2>BM · 결재자 지정 <small>BM이 [보고 완료] 시 결재 요청이 갈 상위자</small></h2>
+        <h2>BM · 결재자 지정 <small>BM이 [결재 상신] 시 결재 요청이 갈 상위자</small></h2>
         <div id="adAppr"><div class="empty">불러오는 중…</div></div>
-        <p class="hint">결재자를 지정하지 않으면 보고 완료만 되고 결재 요청은 가지 않습니다. 승인되면 결재 문서가 이미지로 드라이브 "ETS 실적공수 결재" 폴더에 저장됩니다.</p>
+        <p class="hint">결재자를 지정하지 않으면 그 주가 잠기기만 하고 결재 요청은 가지 않습니다. 승인되면 결재 문서가 이미지로 드라이브 "ETS 실적공수 결재" 폴더에 저장됩니다.</p>
       </div>
       <div class="card">
         <h2>공수 입력 제외자 <small>지정하면 앱 입력이 막히고 현황·엑셀·메일에서 빠집니다</small></h2>
@@ -398,7 +398,7 @@ textarea{min-height:64px;resize:vertical}
         <p class="hint">"자동"은 다우오피스에서 그 부서의 BM 직책자를 그대로 쓰는 것입니다. 한 BM이 여러 부서를 맡으면 각 부서에서 같은 사람을 지정하세요. 지정한 BM에게 그 부서 현황·월요일 메일이 갑니다.</p>
       </div>
       <div class="card">
-        <h2>보고 완료 내역 <small>실수로 완료한 주는 해제 가능</small></h2>
+        <h2>결재 상신 내역 <small>실수로 상신한 주는 해제 가능</small></h2>
         <div id="adCloses"></div>
       </div>
       <div class="card">
@@ -471,8 +471,8 @@ textarea{min-height:64px;resize:vertical}
       <li><b>매일 ＋ 버튼으로 그날 공수를 입력합니다</b>프로젝트는 이름이나 번호 몇 글자만 치면 찾아집니다. 하루에 프로젝트가 여럿이면 여러 건 저장하세요.</li>
       <li><b>다음 날엔 어제 기록이 자동으로 따라옵니다</b>내용이 같으면 [확인]만 누르면 끝. 공수나 프로젝트가 다르면 기록을 눌러 고치세요.</li>
       <li><b>같은 작업이 이어지면 한 번에 여러 날 저장</b>입력할 때 "다른 날에도 같이 저장"에서 요일을 고르면 그 날들에 같은 내용이 들어갑니다.</li>
-      <li><b>수정·삭제는 기록을 누르면 됩니다</b>보고 완료되기 전까지는 언제든 고칠 수 있습니다.</li>
-      <li><b>월요일 06시에 지난주 현황이 부서장(BM)에게 메일로 갑니다</b>빈 날이 있으면 BM 지시에 따라 앱에서 채우세요. BM이 [보고 완료]를 누르면 그 주는 잠기고 열람만 됩니다.</li>
+      <li><b>수정·삭제는 기록을 누르면 됩니다</b>BM이 결재 상신하기 전까지는 언제든 고칠 수 있습니다.</li>
+      <li><b>월요일 06시에 지난주 현황이 부서장(BM)에게 메일로 갑니다</b>빈 날이 있으면 BM 지시에 따라 앱에서 채우세요. BM이 [결재 상신]을 누르면 그 주는 잠기고 열람만 됩니다.</li>
       <li><b>연차·회의 같은 것도 작업유형으로 기록합니다</b>평일에 아무 기록이 없으면 미입력으로 표시됩니다. 주말·공휴일은 일한 날만 적으면 됩니다.</li>
     </ol>
     <div class="note">인터넷이 안 될 때 저장하면 "전송 대기"로 표시되고, 연결되면 자동으로 보내집니다. 다른 기기에서 쓴 기록은 화면으로 돌아오면 자동으로 불러오고, 안 보이면 [새로고침]을 누르세요.</div>
@@ -502,7 +502,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0921s';
+var VER='v0921v';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -655,7 +655,7 @@ function renderWeek(){
   });
   $('week').innerHTML=html;
   $('wkLabel').textContent='입력 가능: '+lbl.join(' · ');
-  $('wkOpen').textContent=OPEN.length>1?'지난주 보고 완료 전':'';
+  $('wkOpen').textContent=OPEN.length>1?'지난주 결재 상신 전':'';
   if(SCROLL_SEL){ SCROLL_SEL=false; setTimeout(function(){ var s=document.querySelector('.day.sel'); if(s&&s.scrollIntoView) s.scrollIntoView({inline:'center',block:'nearest'}); },0); }
 }
 var SCROLL_SEL=true;
@@ -696,7 +696,7 @@ function renderHist(){
   if(!weeks.length){ $('hist').innerHTML='<div class="card"><div class="empty">기록이 없습니다.</div></div>'; return; }
   $('hist').innerHTML=weeks.map(function(mon){
     var list=byWeek[mon].sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;}), open=OPEN.indexOf(mon)>=0;
-    return '<div class="wk"><div class="t"><span>'+md(mon)+' ~ '+md(addDays(mon,6))+' · '+sumOf(list)+'시간</span><span class="badge '+(open?'open':'closed')+'">'+(open?'입력 가능':'보고 완료 · 열람만')+'</span></div><div class="card">'+
+    return '<div class="wk"><div class="t"><span>'+md(mon)+' ~ '+md(addDays(mon,6))+' · '+sumOf(list)+'시간</span><span class="badge '+(open?'open':'closed')+'">'+(open?'입력 가능':'결재 상신됨 · 열람만')+'</span></div><div class="card">'+
       list.map(function(e){ var x=Object.assign({},e); x.project=mdw(e.date)+' '+e.project; return entHtml(x,!open,SELMODE&&open); }).join('')+'</div></div>';
   }).join('');
   renderSelbar();
@@ -707,7 +707,7 @@ function openForm(id){
   if(blocked()){ toast('공수 입력 대상이 아닙니다.'); return; }
   EDIT=id?ENTRIES.filter(function(e){return e.id===id;})[0]:null;
   if(id&&!EDIT) return;
-  if(EDIT&&!editable(EDIT.date)){ toast('보고 완료된 기록은 수정할 수 없습니다.'); return; }
+  if(EDIT&&!editable(EDIT.date)){ toast('결재 상신된 주의 기록은 수정할 수 없습니다.'); return; }
   var last=ls(K_LAST)||{}, base=EDIT||last;
   $('fTitle').textContent=EDIT?'기록 수정':'공수 입력';
   var fd=$('fDate'); fd.min=rangeStart(); fd.max=rangeEnd(); fd.value=EDIT?EDIT.date:(editable(SEL)?SEL:today());
@@ -1046,7 +1046,7 @@ function bmRender(){
   var multi=(d.deptNames||[]).length>1;
   var html='';
   if(d.groups) html+='<div class="f"><label>담당 BM 그룹'+(d.readOnly?' (열람)':' (관리자)')+'</label><select onchange="BM.bmEmp=this.value;BM.selEmp=null;bmLoad()">'+d.groups.map(function(g){return '<option value="'+esc(g.bmEmp)+'"'+(g.bmEmp===d.bmEmp?' selected':'')+'>'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')+'</select></div>';
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px"><b style="font-size:13.5px">'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">보고 완료</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">보고 완료 전</span>'))+'</div>';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px"><b style="font-size:13.5px">'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">결재 상신됨</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">상신 전</span>'))+'</div>';
   html+='<div class="stats"><div><b>'+mx.length+'</b><span>소속 인원</span></div><div class="ok"><b>'+(mx.length-miss.length)+'</b><span>입력 완료</span></div><div class="miss"><b>'+miss.length+'</b><span>미입력</span></div></div>';
   html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
   var cols=1+(multi?1:0)+7+1;
@@ -1058,8 +1058,8 @@ function bmRender(){
     }
     return row; }).join('');
   html+='</tbody></table></div>';
-  html+='<div class="bmacts"><button class="btn ghost" onclick="bmExcel()">엑셀 다운로드</button>'+(d.readOnly?'<button class="btn dark" disabled>열람 전용</button>':(d.closed||isThis?'<button class="btn dark" disabled>'+(d.closed?'보고 완료됨':'이번 주는 진행 중')+'</button>':'<button class="btn dark" onclick="bmClose()">보고 완료</button>'))+'</div>';
-  html+='<p class="hint">평일 빈칸은 미입력(빨강), 주말·공휴일은 회색. 이름을 누르면 상세 기록이 보입니다. 미입력자는 앱에서 직접 채우게 하고, 확인이 끝나면 [보고 완료] 후 엑셀을 받으세요.</p>';
+  html+='<div class="bmacts"><button class="btn ghost" onclick="bmExcel()">엑셀 다운로드</button>'+(d.readOnly?'<button class="btn dark" disabled>열람 전용</button>':(d.closed||isThis?'<button class="btn dark" disabled>'+(d.closed?'결재 상신 완료':'이번 주는 진행 중')+'</button>':'<button class="btn dark" onclick="bmClose()">결재 상신</button>'))+'</div>';
+  html+='<p class="hint">평일 빈칸은 미입력(빨강), 주말·공휴일은 회색. 이름을 누르면 상세 기록이 보입니다. 미입력자는 앱에서 직접 채우게 하고, 확인이 끝나면 <b>[결재 상신]</b> → 승인 후 <b>[엑셀 다운로드]</b> → "ERP입력용" 시트를 <b>ERP 실적입력 화면에 복사·붙여넣기</b>하세요.</p>';
   $('bmBody').innerHTML=html;
   $('bmDetail').style.display='none';
 }
@@ -1068,26 +1068,31 @@ function bmSel(emp,keep){
   bmRender();
 }
 function bmClose(){
-  if(!confirm(BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주를 보고 완료할까요?\n완료하면 소속원이 이 주의 기록을 수정할 수 없고, 상위 결재자에게 결재 요청이 올라갑니다.')) return;
-  signOpen('보고 완료 서명',BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주간보고에 서명합니다.',function(sign){
-    prog(20,'보고 완료 처리 중','서명 저장 및 결재 요청 중…');
+  if(!confirm(BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주간보고를 결재 상신할까요?\n상신하면 소속원이 이 주의 기록을 수정할 수 없고, 상위 결재자에게 결재 요청이 올라갑니다.')) return;
+  signOpen('결재 상신 서명',BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주간보고에 서명합니다.',function(sign){
+    prog(20,'결재 상신 중','서명 저장 및 결재 요청 중…');
     var t=setInterval(function(){ var w=parseFloat($('progF').style.width)||20; if(w<90) prog(w+3); },400);
     api({action:'bmClose',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp,sign:sign}).then(function(d){
       clearInterval(t); prog(100,'완료',d.ok?'상신되었습니다.':'');
       setTimeout(function(){ prog(null);
-        if(d.ok){ var a=d.approval||{}; toast(a.pending?('결재 요청 완료 — '+a.approver+'님에게 상신'):'보고 완료 (결재자 미지정)'); BM.sig=null; bmLoad(); }
+        if(d.ok){ var a=d.approval||{}; toast(a.pending?('결재 상신 완료 — '+a.approver+'님에게 결재 요청'):'상신 완료 (결재자 미지정 — 결재 요청 없음)'); BM.sig=null; bmLoad(); }
         else toast(d.msg||'실패'); },600);
     }).catch(function(){ clearInterval(t); prog(null); toast('서버 연결 오류'); });
   });
 }
 function bmExcel(){
-  toast('엑셀 만드는 중… (몇 초)');
+  prog(10,'엑셀 만드는 중','부서 기록을 모으는 중…');
+  var steps=[[30,'ERP 입력용 시트 작성 중…'],[55,'미입력 현황 시트 작성 중…'],[75,'엑셀 파일로 변환 중…'],[88,'거의 다 됐습니다…']], k=0;
+  var t=setInterval(function(){ if(k<steps.length){ prog(steps[k][0],null,steps[k][1]); k++; } },1600);
   api({action:'bmExcel',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){
-    if(!d.ok){ toast(d.msg||'실패'); return; }
+    clearInterval(t);
+    if(!d.ok){ prog(null); toast(d.msg||'실패'); return; }
+    prog(100,'완료','다운로드를 시작합니다.');
     var bin=atob(d.b64), arr=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
     var url=URL.createObjectURL(new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
     var a=document.createElement('a'); a.href=url; a.download=d.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){URL.revokeObjectURL(url);},2000);
-  }).catch(function(){ toast('서버 연결 오류'); });
+    setTimeout(function(){ prog(null); },700);
+  }).catch(function(){ clearInterval(t); prog(null); toast('서버 연결 오류'); });
 }
 
 // ---------- 프로젝트 탭 ----------
@@ -1185,7 +1190,7 @@ function adminLoad(){
     $('adStart').value=d.startDate||'';
     EXLIST=d.excluded||[]; renderExList(); renderExSearch();
     APPRMAP=d.approvers||[]; GROUPS=d.groups||[]; renderApprMap();
-    $('adCloses').innerHTML=d.closes.length?d.closes.map(function(c){ return '<div class="item"><div><div class="nm"><b>'+esc(c.dept)+'</b> · '+md(c.week)+'~'+md(addDays(c.week,6))+'</div><div class="no" style="color:var(--mu)">'+esc(c.by)+' · '+esc(c.at)+'</div></div><button onclick="adminReopen(\''+esc(c.deptCode)+'\',\''+c.week+'\',\''+esc(c.dept)+'\')">해제</button></div>'; }).join(''):'<div class="empty">아직 보고 완료된 주가 없습니다.</div>';
+    $('adCloses').innerHTML=d.closes.length?d.closes.map(function(c){ return '<div class="item"><div><div class="nm"><b>'+esc(c.dept)+'</b> · '+md(c.week)+'~'+md(addDays(c.week,6))+'</div><div class="no" style="color:var(--mu)">'+esc(c.by)+' · '+esc(c.at)+'</div></div><button onclick="adminReopen(\''+esc(c.deptCode)+'\',\''+c.week+'\',\''+esc(c.dept)+'\')">해제</button></div>'; }).join(''):'<div class="empty">아직 결재 상신된 주가 없습니다.</div>';
   }).catch(function(){ toast('서버 연결 오류'); });
 }
 function adminSetStart(){
@@ -1201,7 +1206,7 @@ function adminSetPin(){
   }).catch(function(){ show('adMsg',false,'서버 연결 오류'); });
 }
 function adminReopen(code,week,dept){
-  if(!confirm(dept+' '+md(week)+'~'+md(addDays(week,6))+' 주의 보고 완료를 해제할까요?\n해제하면 소속원이 다시 입력·수정할 수 있습니다.')) return;
+  if(!confirm(dept+' '+md(week)+'~'+md(addDays(week,6))+' 주의 결재 상신을 해제할까요?\n해제하면 소속원이 다시 입력·수정할 수 있습니다.')) return;
   api({action:'adminReopen',empNo:USER.empNo,pin:PIN.PIN_ADMIN,deptCode:code,week:week}).then(function(d){ if(d.ok){ toast('해제됨'); adminLoad(); } else toast(d.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
 }
 function adminTestNoti(){
