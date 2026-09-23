@@ -502,7 +502,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0921v';
+var VER='v0921w';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -1001,18 +1001,21 @@ function apprReject(id){
 }
 
 // ---------- 부서 현황 (BM) ----------
-var BM={week:null,data:null,selEmp:null,bmEmp:'',sig:null};
+var BM={week:null,data:null,selEmp:null,bmEmp:'',sig:null}, K_BMG='ETS_LABOR_BMGROUP';
+function bmPickGroup(v){ BM.bmEmp=v; BM.selEmp=null; BM.sig=null; BM.data=null; ls(K_BMG,v); bmLoad(); }
 function bmNav(n){ BM.week=addDays(BM.week||addDays(thisMonday(),-7),n*7); if(BM.week>thisMonday()) { BM.week=thisMonday(); return; } BM.sig=null; BM.data=null; bmLoad(); }
 function bmLoad(silent){
   if(!BM.week) BM.week=addDays(thisMonday(),-7);
+  if(!BM.bmEmp){ var saved=ls(K_BMG); if(saved) BM.bmEmp=saved; else if(USER&&USER.isViewer&&!USER.isAdmin) BM.bmEmp='ALL'; }
   $('bmWeekLbl').innerHTML=md(BM.week)+' ~ '+md(addDays(BM.week,6))+'<small>'+(BM.week===thisMonday()?'이번 주':(BM.week===addDays(thisMonday(),-7)?'지난주':''))+'</small>';
   if(!silent){ if(!BM.data) $('bmBody').innerHTML='<div class="empty">불러오는 중…</div>'; else toast('현황 갱신 중…'); }
   return api({action:'bmInit',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){
     if(!d.ok){ if(!silent) $('bmBody').innerHTML='<div class="empty">'+esc(d.msg)+'</div>'; return; }
+    if(d.groups&&!BM.bmEmp&&(USER.isViewer&&!USER.isAdmin)) BM.bmEmp='ALL';
     var sig=JSON.stringify([d.entries,d.closed,d.members.length]);
     if(silent&&sig===BM.sig) return;                 // 바뀐 게 없으면 화면 그대로
     var changed=silent&&BM.sig&&sig!==BM.sig;
-    BM.sig=sig; BM.data=d; BM.bmEmp=d.bmEmp||'';
+    BM.sig=sig; BM.data=d; if(!BM.bmEmp) BM.bmEmp=d.bmEmp||'';
     var y=window.scrollY;
     bmRender();
     if(silent) window.scrollTo(0,y);
@@ -1045,7 +1048,9 @@ function bmRender(){
   var isThis=d.week===d.thisMonday;
   var multi=(d.deptNames||[]).length>1;
   var html='';
-  if(d.groups) html+='<div class="f"><label>담당 BM 그룹'+(d.readOnly?' (열람)':' (관리자)')+'</label><select onchange="BM.bmEmp=this.value;BM.selEmp=null;bmLoad()">'+d.groups.map(function(g){return '<option value="'+esc(g.bmEmp)+'"'+(g.bmEmp===d.bmEmp?' selected':'')+'>'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')+'</select></div>';
+  if(d.groups) html+='<div class="f"><label>조회 범위'+(d.readOnly?' (열람)':' (관리자)')+'</label><select onchange="bmPickGroup(this.value)">'+
+    '<option value="ALL"'+(d.bmEmp==='ALL'?' selected':'')+'>전체 부서 — 담당 BM이 지정된 모든 부서</option>'+
+    d.groups.map(function(g){return '<option value="'+esc(g.bmEmp)+'"'+(g.bmEmp===d.bmEmp?' selected':'')+'>'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')+'</select></div>';
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px"><b style="font-size:13.5px">'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">결재 상신됨</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">상신 전</span>'))+'</div>';
   html+='<div class="stats"><div><b>'+mx.length+'</b><span>소속 인원</span></div><div class="ok"><b>'+(mx.length-miss.length)+'</b><span>입력 완료</span></div><div class="miss"><b>'+miss.length+'</b><span>미입력</span></div></div>';
   html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
