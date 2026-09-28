@@ -505,7 +505,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0928b';
+var VER='v0928c';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -1026,7 +1026,11 @@ function bmLoad(silent){
     bmRender();
     if(silent) window.scrollTo(0,y);
     if(changed) bmFresh('방금 갱신됨');
-  }).catch(function(){ if(!silent) $('bmBody').innerHTML='<div class="empty">불러오지 못했습니다.</div>'; });
+  }).catch(function(e){
+    if(silent) return;
+    if(!BM._retry){ BM._retry=1; setTimeout(function(){ BM._retry=0; bmLoad(); },1200); $('bmBody').innerHTML='<div class="empty">불러오는 중… (재시도)</div>'; return; }
+    $('bmBody').innerHTML='<div class="empty">불러오지 못했습니다.<br><small style="color:var(--mu)">'+esc(String(e&&e.message||e).slice(0,120))+'</small><br><button class="btn ghost sm" style="margin-top:10px" onclick="bmLoad()">다시 시도</button></div>';
+  });
 }
 function bmFresh(t){ var el=$('bmFresh'); if(!el) return; el.textContent=t; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(function(){ el.classList.remove('on'); },4000); }
 // 부서 탭을 보고 있을 때만 30초마다 조용히 갱신
