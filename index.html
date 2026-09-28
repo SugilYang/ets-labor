@@ -100,6 +100,8 @@ textarea{min-height:64px;resize:vertical}
 .day.sel{border-color:transparent;background:var(--grad);color:#fff;box-shadow:0 10px 20px -10px rgba(79,107,255,.6)}
 .day.sel .w,.day.sel .h{color:rgba(255,255,255,.85)}
 .day.today::after{content:"";position:absolute;top:6px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.day.pre{opacity:.35}
+.day.off .h{color:var(--warn);font-weight:700;font-size:9.5px}
 .day.off .w{color:var(--warn)}
 .day.sel.off .w{color:rgba(255,255,255,.85)}
 .day.miss{border-color:#FECDD3;background:#FFF7F8}
@@ -271,6 +273,7 @@ textarea{min-height:64px;resize:vertical}
 .mx .dth{font-size:12.5px;font-weight:800;color:var(--c2);padding:4px 0 2px;display:flex;justify-content:space-between}
 .mx .dth span{font-weight:500;color:var(--mu);font-size:11.5px}
 .mx .dt .ent{padding:7px 0}
+.holbar{background:#FFF1F2;border:1px solid #FECDD3;color:#9F1239;border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:700;margin:10px 0}
 .bmacts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:11px 4px;border-top:1px solid var(--ln)}
 .item:first-child{border-top:0}
@@ -502,12 +505,12 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0921w';
+var VER='v0928b';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
 var DOW=['월','화','수','목','금','토','일'];
-var START='', USER=null, PROJECTS=[], ENTRIES=[], QUEUE=[], OPEN=[], HOL=[], SEL=null, EDIT=null, PJ=null, TAB='Input';
+var START='', HOLN={}, USER=null, PROJECTS=[], ENTRIES=[], QUEUE=[], OPEN=[], HOL=[], SEL=null, EDIT=null, PJ=null, TAB='Input';
 var PIN={}; // 세션 동안만 (새로고침하면 다시 입력)
 
 // ---------- 공통 ----------
@@ -528,7 +531,8 @@ function today(){ return ymd(kstNow()); }
 function thisMonday(){ return monOf(today()); }
 function md(s){ return (+s.slice(5,7))+'/'+(+s.slice(8,10)); }
 function mdw(s){ return md(s)+'('+DOW[dow(s)]+')'; }
-function editable(s){ return OPEN.indexOf(monOf(s))>=0; }
+function editable(s){ return OPEN.indexOf(monOf(s))>=0 && (!START||s>=START); }
+function beforeStart(s){ return !!(START&&s<START); }
 function isWorkday(s){ return (!START||s>=START) && dow(s)<5 && HOL.indexOf(s)<0; }
 function rangeStart(){ return OPEN.length?OPEN[0]:thisMonday(); }
 function rangeEnd(){ return addDays(thisMonday(),6); }
@@ -587,7 +591,7 @@ function sync(){
       if(!d.ok){ if(d.relogin){ toast(d.msg); logout(); } return; }
       USER=d.user; ls(K_USER,USER); applyUser();
       PROJECTS=d.projects; ls(K_PJ,{ts:Date.now(),list:PROJECTS});
-      OPEN=d.openWeeks; HOL=d.holidays||[]; START=d.startDate||'';
+      OPEN=d.openWeeks; HOL=d.holidays||[]; HOLN=d.holidayNames||{}; START=d.startDate||'';
       if(!editable(SEL)) SEL=today();
       var pendIds={}; QUEUE.forEach(function(q){ if(q.op==='save') q.entries.forEach(function(e){pendIds[e.id]=1;}); });
       ENTRIES=d.entries.filter(function(e){return !pendIds[e.id];}).concat(ENTRIES.filter(function(e){return pendIds[e.id];}));
@@ -651,7 +655,8 @@ function renderWeek(){
     if(wi) html+='<div class="day sep"></div>';
     lbl.push(md(mon)+'~'+md(addDays(mon,6)));
     for(var i=0;i<7;i++){ var d=addDays(mon,i), w=dow(d), h=sumOf(entriesOf(d)), miss=isWorkday(d)&&d<t&&!entriesOf(d).length;
-      html+='<div class="day'+(d===SEL?' sel':'')+(d===t?' today':'')+(w>=5?' off':'')+(miss&&d!==SEL?' miss':'')+'" onclick="selDay(\''+d+'\')"><div class="w">'+DOW[w]+'</div><div class="d">'+(+d.slice(8,10))+'</div><div class="h">'+(hasLeave(d)?'연차':(h?h+'h':''))+'</div></div>'; }
+      var pre=beforeStart(d), hn=HOLN[d]||'';
+      html+='<div class="day'+(d===SEL?' sel':'')+(d===t?' today':'')+(w>=5||hn?' off':'')+(pre?' pre':'')+(miss&&d!==SEL?' miss':'')+'" onclick="selDay(\''+d+'\')"><div class="w">'+DOW[w]+'</div><div class="d">'+(+d.slice(8,10))+'</div><div class="h">'+(pre?'-':(hasLeave(d)?'연차':(h?h+'h':(hn?'휴일':''))))+'</div></div>'; }
   });
   $('week').innerHTML=html;
   $('wkLabel').textContent='입력 가능: '+lbl.join(' · ');
@@ -659,7 +664,7 @@ function renderWeek(){
   if(SCROLL_SEL){ SCROLL_SEL=false; setTimeout(function(){ var s=document.querySelector('.day.sel'); if(s&&s.scrollIntoView) s.scrollIntoView({inline:'center',block:'nearest'}); },0); }
 }
 var SCROLL_SEL=true;
-function selDay(d){ SEL=d; SCROLL_SEL=true; render(); }
+function selDay(d){ if(beforeStart(d)){ toast('시스템 시작일('+md(START)+') 이전에는 입력할 수 없습니다.'); return; } SEL=d; SCROLL_SEL=true; render(); }
 function renderDay(){
   $('dayTitle').textContent=(SEL===today()?'오늘 · ':'')+mdw(SEL);
   var list=entriesOf(SEL);
@@ -705,6 +710,7 @@ function renderHist(){
 // ---------- 공수 폼 ----------
 function openForm(id){
   if(blocked()){ toast('공수 입력 대상이 아닙니다.'); return; }
+  if(!id&&beforeStart(SEL)){ toast('시스템 시작일('+md(START)+') 이전에는 입력할 수 없습니다.'); return; }
   EDIT=id?ENTRIES.filter(function(e){return e.id===id;})[0]:null;
   if(id&&!EDIT) return;
   if(EDIT&&!editable(EDIT.date)){ toast('결재 상신된 주의 기록은 수정할 수 없습니다.'); return; }
@@ -912,7 +918,7 @@ function apprDetail(id){
     el.innerHTML='<div class="mini"><div><b>'+d.members.length+'</b><span>소속 인원</span></div>'+
       '<div><b style="color:var(--ok)">'+(d.members.length-miss)+'</b><span>입력 완료</span></div>'+
       '<div><b style="color:var(--warn)">'+miss+'</b><span>미입력</span></div></div>'+
-      '<div class="mx"><table><thead><tr><th>이름</th><th>부서</th>'+days.map(function(s){var off=dow(s)>=5||d.holidays.indexOf(s)>=0;return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+'</th>';}).join('')+'<th>미입력</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      '<div class="mx"><table><thead><tr><th>이름</th><th>부서</th>'+days.map(function(s){var hn=(d.holidayNames||{})[s]||'',off=dow(s)>=5||hn;return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+(hn?'<br><small style="font-size:9px;color:var(--warn)">휴일</small>':'')+'</th>';}).join('')+'<th>미입력</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   }).catch(function(){});
 }
 function apprApprove(id,dept){
@@ -954,7 +960,7 @@ function buildApprovalImage(id,apprSign){
   var yr=week.slice(0,4);
   var rowArr=rows.split('</tr>').filter(Boolean).map(function(r){return r+'</tr>';});
   var thead='<tr><th style="text-align:left;padding-left:6px">이름</th><th style="text-align:left;padding-left:6px">부서</th>'+
-    days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th style="'+(off?'color:#B3364A':'')+'">'+DOW[dow(s)]+' '+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr>';
+    days.map(function(s){ var hn=(d.holidayNames||{})[s]||'', off=dow(s)>=5||hn; return '<th style="'+(off?'color:#B3364A':'')+'">'+DOW[dow(s)]+' '+(+s.slice(8,10))+(hn?'<br><span style="font-size:7px">휴일</span>':'')+'</th>'; }).join('')+'<th>미입력</th></tr>';
   var chunks=[], first=40, rest=54;
   chunks.push(rowArr.slice(0,first)); for(var k=first;k<rowArr.length;k+=rest) chunks.push(rowArr.slice(k,k+rest));
   if(!chunks[0].length) chunks=[[]];
@@ -1053,7 +1059,7 @@ function bmRender(){
     d.groups.map(function(g){return '<option value="'+esc(g.bmEmp)+'"'+(g.bmEmp===d.bmEmp?' selected':'')+'>'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')+'</select></div>';
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px"><b style="font-size:13.5px">'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">결재 상신됨</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">상신 전</span>'))+'</div>';
   html+='<div class="stats"><div><b>'+mx.length+'</b><span>소속 인원</span></div><div class="ok"><b>'+(mx.length-miss.length)+'</b><span>입력 완료</span></div><div class="miss"><b>'+miss.length+'</b><span>미입력</span></div></div>';
-  html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var off=dow(s)>=5||d.holidays.indexOf(s)>=0; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
+  html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var hn=(d.holidayNames||{})[s]||'', off=dow(s)>=5||hn; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+(hn?'<br><small style="font-size:9px;color:var(--warn)">휴일</small>':'')+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
   var cols=1+(multi?1:0)+7+1;
   html+=mx.map(function(m){
     var row='<tr class="'+(BM.selEmp===m.empNo?'sel':'')+'" onclick="bmSel(\''+m.empNo+'\')"><td>'+esc(m.name)+(m.duty==='BM'?' <span class="badge bm">BM</span>':'')+'</td>'+(multi?'<td style="color:var(--mu);font-size:11.5px">'+esc(m.dept)+'</td>':'')+m.days.map(function(c){return '<td class="'+c.status+'">'+c.text+'</td>';}).join('')+'<td class="tot'+(m.missing.length?' bad':'')+'">'+(m.missing.length||'')+'</td></tr>';
@@ -1063,6 +1069,8 @@ function bmRender(){
     }
     return row; }).join('');
   html+='</tbody></table></div>';
+  var hns=(d.holidayNames||{}), hl=[]; for(var i=0;i<7;i++){ var dd=addDays(BM.week,i); if(hns[dd]) hl.push(md(dd)); }
+  if(hl.length) html+='<div class="holbar">이번 주 휴일 — '+esc(hl.join(' · '))+' · 미입력으로 잡히지 않지만, 근무했다면 입력할 수 있습니다</div>';
   html+='<div class="bmacts"><button class="btn ghost" onclick="bmExcel()">엑셀 다운로드</button>'+(d.readOnly?'<button class="btn dark" disabled>열람 전용</button>':(d.closed||isThis?'<button class="btn dark" disabled>'+(d.closed?'결재 상신 완료':'이번 주는 진행 중')+'</button>':'<button class="btn dark" onclick="bmClose()">결재 상신</button>'))+'</div>';
   html+='<p class="hint">평일 빈칸은 미입력(빨강), 주말·공휴일은 회색. 이름을 누르면 상세 기록이 보입니다. 미입력자는 앱에서 직접 채우게 하고, 확인이 끝나면 <b>[결재 상신]</b> → 승인 후 <b>[엑셀 다운로드]</b> → "ERP입력용" 시트를 <b>ERP 실적입력 화면에 복사·붙여넣기</b>하세요.</p>';
   $('bmBody').innerHTML=html;
