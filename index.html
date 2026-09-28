@@ -505,7 +505,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v0928c';
+var VER='v0928d';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -655,7 +655,7 @@ function renderWeek(){
     if(wi) html+='<div class="day sep"></div>';
     lbl.push(md(mon)+'~'+md(addDays(mon,6)));
     for(var i=0;i<7;i++){ var d=addDays(mon,i), w=dow(d), h=sumOf(entriesOf(d)), miss=isWorkday(d)&&d<t&&!entriesOf(d).length;
-      var pre=beforeStart(d), hn=HOLN[d]||'';
+      var pre=beforeStart(d), hn=(w>=5?'':(HOLN[d]||''));
       html+='<div class="day'+(d===SEL?' sel':'')+(d===t?' today':'')+(w>=5||hn?' off':'')+(pre?' pre':'')+(miss&&d!==SEL?' miss':'')+'" onclick="selDay(\''+d+'\')"><div class="w">'+DOW[w]+'</div><div class="d">'+(+d.slice(8,10))+'</div><div class="h">'+(pre?'-':(hasLeave(d)?'연차':(h?h+'h':(hn?'휴일':''))))+'</div></div>'; }
   });
   $('week').innerHTML=html;
@@ -918,7 +918,7 @@ function apprDetail(id){
     el.innerHTML='<div class="mini"><div><b>'+d.members.length+'</b><span>소속 인원</span></div>'+
       '<div><b style="color:var(--ok)">'+(d.members.length-miss)+'</b><span>입력 완료</span></div>'+
       '<div><b style="color:var(--warn)">'+miss+'</b><span>미입력</span></div></div>'+
-      '<div class="mx"><table><thead><tr><th>이름</th><th>부서</th>'+days.map(function(s){var hn=(d.holidayNames||{})[s]||'',off=dow(s)>=5||hn;return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+(hn?'<br><small style="font-size:9px;color:var(--warn)">휴일</small>':'')+'</th>';}).join('')+'<th>미입력</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+      '<div class="mx"><table><thead><tr><th>이름</th><th>부서</th>'+days.map(function(s){var hn=dow(s)>=5?'':((d.holidayNames||{})[s]||''),off=dow(s)>=5||hn;return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+(hn?'<br><small style="font-size:9px;color:var(--warn)">휴일</small>':'')+'</th>';}).join('')+'<th>미입력</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   }).catch(function(){});
 }
 function apprApprove(id,dept){
@@ -960,7 +960,7 @@ function buildApprovalImage(id,apprSign){
   var yr=week.slice(0,4);
   var rowArr=rows.split('</tr>').filter(Boolean).map(function(r){return r+'</tr>';});
   var thead='<tr><th style="text-align:left;padding-left:6px">이름</th><th style="text-align:left;padding-left:6px">부서</th>'+
-    days.map(function(s){ var hn=(d.holidayNames||{})[s]||'', off=dow(s)>=5||hn; return '<th style="'+(off?'color:#B3364A':'')+'">'+DOW[dow(s)]+' '+(+s.slice(8,10))+(hn?'<br><span style="font-size:7px">휴일</span>':'')+'</th>'; }).join('')+'<th>미입력</th></tr>';
+    days.map(function(s){ var hn=dow(s)>=5?'':((d.holidayNames||{})[s]||''), off=dow(s)>=5||hn; return '<th style="'+(off?'color:#B3364A':'')+'">'+DOW[dow(s)]+' '+(+s.slice(8,10))+(hn?'<br><span style="font-size:7px">휴일</span>':'')+'</th>'; }).join('')+'<th>미입력</th></tr>';
   var chunks=[], first=40, rest=54;
   chunks.push(rowArr.slice(0,first)); for(var k=first;k<rowArr.length;k+=rest) chunks.push(rowArr.slice(k,k+rest));
   if(!chunks[0].length) chunks=[[]];
@@ -1063,7 +1063,7 @@ function bmRender(){
     d.groups.map(function(g){return '<option value="'+esc(g.bmEmp)+'"'+(g.bmEmp===d.bmEmp?' selected':'')+'>'+esc(g.bmName)+' — '+esc(g.depts.map(function(x){return x.name;}).join(', '))+'</option>';}).join('')+'</select></div>';
   html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px"><b style="font-size:13.5px">'+esc(d.dept)+'</b>'+(d.closed?'<span class="badge closed">결재 상신됨</span>':(isThis?'<span class="badge open">진행 중</span>':'<span class="badge open">상신 전</span>'))+'</div>';
   html+='<div class="stats"><div><b>'+mx.length+'</b><span>소속 인원</span></div><div class="ok"><b>'+(mx.length-miss.length)+'</b><span>입력 완료</span></div><div class="miss"><b>'+miss.length+'</b><span>미입력</span></div></div>';
-  html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var hn=(d.holidayNames||{})[s]||'', off=dow(s)>=5||hn; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+(hn?'<br><small style="font-size:9px;color:var(--warn)">휴일</small>':'')+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
+  html+='<div class="mx"><table><thead><tr><th>이름</th>'+(multi?'<th>부서</th>':'')+days.map(function(s){ var hn=dow(s)>=5?'':((d.holidayNames||{})[s]||''), off=dow(s)>=5||hn; return '<th class="'+(off?'off':'')+'">'+DOW[dow(s)]+'<br>'+(+s.slice(8,10))+(hn?'<br><small style="font-size:9px;color:var(--warn)">휴일</small>':'')+'</th>'; }).join('')+'<th>미입력</th></tr></thead><tbody>';
   var cols=1+(multi?1:0)+7+1;
   html+=mx.map(function(m){
     var row='<tr class="'+(BM.selEmp===m.empNo?'sel':'')+'" onclick="bmSel(\''+m.empNo+'\')"><td>'+esc(m.name)+(m.duty==='BM'?' <span class="badge bm">BM</span>':'')+'</td>'+(multi?'<td style="color:var(--mu);font-size:11.5px">'+esc(m.dept)+'</td>':'')+m.days.map(function(c){return '<td class="'+c.status+'">'+c.text+'</td>';}).join('')+'<td class="tot'+(m.missing.length?' bad':'')+'">'+(m.missing.length||'')+'</td></tr>';
