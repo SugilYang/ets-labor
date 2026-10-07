@@ -101,6 +101,7 @@ textarea{min-height:64px;resize:vertical}
 .day.sel .w,.day.sel .h{color:rgba(255,255,255,.85)}
 .day.today::after{content:"";position:absolute;top:6px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--warn)}
 .day.pre{opacity:.35}
+.day.fut:not(.sel){opacity:.6}
 .day.off .h{color:var(--warn);font-weight:700;font-size:9.5px}
 .day.off .w{color:var(--warn)}
 .day.sel.off .w{color:rgba(255,255,255,.85)}
@@ -505,7 +506,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v1001b';
+var VER='v1007a';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -558,7 +559,7 @@ function enter(){
   $('fab').classList.add('on');
   $('fType').innerHTML='<option value="">클릭 후 선택</option>'+TYPES.map(function(t){return '<option>'+t+'</option>';}).join('');
   applyUser();
-  OPEN=[thisMonday()]; SEL=today();
+  OPEN=[thisMonday(),addDays(thisMonday(),7)]; SEL=today();
   var pc=ls(K_PJ); PROJECTS=(pc&&pc.list)||[]; ENTRIES=ls(K_ENT)||[]; QUEUE=ls(K_Q)||[];
   render(); sync();
   // 메일 링크(?tab=bm&week=YYYY-MM-DD)로 들어온 경우 바로 부서 탭으로
@@ -655,12 +656,12 @@ function renderWeek(){
     if(wi) html+='<div class="day sep"></div>';
     lbl.push(md(mon)+'~'+md(addDays(mon,6)));
     for(var i=0;i<7;i++){ var d=addDays(mon,i), w=dow(d), h=sumOf(entriesOf(d)), miss=isWorkday(d)&&d<t&&!entriesOf(d).length;
-      var pre=beforeStart(d), hn=(w>=5?'':(HOLN[d]||''));
-      html+='<div class="day'+(d===SEL?' sel':'')+(d===t?' today':'')+(w>=5||hn?' off':'')+(pre?' pre':'')+(miss&&d!==SEL?' miss':'')+'" onclick="selDay(\''+d+'\')"><div class="w">'+DOW[w]+'</div><div class="d">'+(+d.slice(8,10))+'</div><div class="h">'+(pre?'-':(hasLeave(d)?'연차':(h?h+'h':(hn?'휴일':''))))+'</div></div>'; }
+      var pre=beforeStart(d), fut=d>t, hn=(w>=5?'':(HOLN[d]||''));
+      html+='<div class="day'+(d===SEL?' sel':'')+(d===t?' today':'')+(w>=5||hn?' off':'')+(pre?' pre':'')+(fut?' fut':'')+(miss&&d!==SEL?' miss':'')+'" onclick="selDay(\''+d+'\')"><div class="w">'+DOW[w]+'</div><div class="d">'+(+d.slice(8,10))+'</div><div class="h">'+(pre?'-':(hasLeave(d)?'연차':(h?h+'h':(hn?'휴일':''))))+'</div></div>'; }
   });
   $('week').innerHTML=html;
   $('wkLabel').textContent='입력 가능: '+lbl.join(' · ');
-  $('wkOpen').textContent=OPEN.length>1?'지난주 결재 상신 전':'';
+  $('wkOpen').textContent=OPEN.some(function(m){return m<thisMonday();})?'지난주 결재 상신 전':'';
   if(SCROLL_SEL){ SCROLL_SEL=false; setTimeout(function(){ var s=document.querySelector('.day.sel'); if(s&&s.scrollIntoView) s.scrollIntoView({inline:'center',block:'nearest'}); },0); }
 }
 var SCROLL_SEL=true;
