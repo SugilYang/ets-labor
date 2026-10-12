@@ -509,7 +509,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v1007d';
+var VER='v1012a';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -860,7 +860,7 @@ function signSubmit(){
 }
 
 // ---------- 결재 ----------
-var APPR={pending:[],done:[],detail:{}};
+var APPR={pending:[],done:[],all:[],detail:{}};
 function prog(pct,title,msg){
   var el=$('prog');
   if(pct===null){ el.classList.remove('on'); return; }
@@ -871,7 +871,7 @@ function nowKst(){ var d=kstNow(); return ymd(d)+' '+('0'+d.getHours()).slice(-2
 function apprCount(){
   api({action:'apprInbox',empNo:USER.empNo}).then(function(d){
     if(!d.ok) return;
-    APPR.pending=d.pending; APPR.done=d.done;
+    APPR.pending=d.pending; APPR.done=d.done; APPR.all=d.all||[];
     var dot=$('apprDot');
     if(d.pending.length){ dot.style.display='inline-block'; dot.style.cssText='display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-left:4px;vertical-align:2px'; }
     else dot.style.display='none';
@@ -881,7 +881,9 @@ function apprCount(){
 function apprLoad(){ $('apprBody').innerHTML='<div class="empty">불러오는 중…</div>'; apprCount(); setTimeout(apprRender,50); }
 function apprRender(){
   var h='';
-  if(!APPR.pending.length&&!APPR.done.length){ $('apprBody').innerHTML='<div class="card"><div class="empty">결재할 문서가 없습니다.</div></div>'; return; }
+  var seen={}; APPR.pending.concat(APPR.done).forEach(function(a){ seen[a.id]=1; });
+  var others=(USER.isAdmin?APPR.all:[]).filter(function(a){ return !seen[a.id]; });
+  if(!APPR.pending.length&&!APPR.done.length&&!others.length){ $('apprBody').innerHTML='<div class="card"><div class="empty">결재할 문서가 없습니다.</div></div>'; return; }
   if(APPR.pending.length){
     h+='<div class="wk"><div class="t"><span>결재 대기 '+APPR.pending.length+'건</span></div></div>';
     h+=APPR.pending.map(apprCard).join('');
@@ -890,10 +892,24 @@ function apprRender(){
     h+='<div class="wk" style="margin-top:6px"><div class="t"><span>처리 완료</span></div></div>';
     h+=APPR.done.map(apprCard).join('');
   }
+  if(others.length){
+    h+='<div class="wk" style="margin-top:6px"><div class="t"><span>전체 결재 내역</span><small style="color:var(--mu);font-weight:400">관리자 열람 · 최근 '+others.length+'건</small></div></div>';
+    h+=others.map(function(a){ return apprCard(a,true); }).join('');
+  }
   $('apprBody').innerHTML=h;
 }
-function apprCard(a){
+function apprCard(a,viewOnly){
   var st=a.status==='대기'?'st-wait':(a.status==='승인'?'st-ok':'st-no');
+  if(viewOnly){
+    var b='<div class="apc"><div class="top"><div><div class="ti">'+esc(a.dept)+'</div>'+
+      '<div class="sub">'+md(a.week)+' ~ '+md(addDays(a.week,6))+' · 상신 '+esc(a.bmName)+' BM · '+esc(a.submittedAt)+'</div>'+
+      '<div class="sub">결재자 '+esc(a.apprName||'-')+(a.doneAt?' · '+esc(a.doneAt):' · 대기 중')+'</div></div>'+
+      '<span class="st '+st+'">'+esc(a.status)+'</span></div>';
+    if(a.reason) b+='<div class="sub" style="color:var(--warn)">반려 사유: '+esc(a.reason)+'</div>';
+    b+='<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'+(a.imageUrl?'<button class="btn sm" onclick="apprImage(\''+a.id+'\')">결재 문서 보기</button>':'')+'<button class="btn ghost sm" onclick="apprToggle(\''+a.id+'\')">내용 보기</button></div><div id="ad_'+a.id+'" style="display:none;margin-top:8px"></div>';
+    if(USER.isAdmin&&a.status!=='대기') b+='<div style="text-align:right;margin-top:6px"><button class="btn danger sm" onclick="apprDelete(\''+a.id+'\')">삭제</button></div>';
+    return b+'</div>';
+  }
   var body='<div class="apc"><div class="top"><div><div class="ti">'+esc(a.dept)+'</div>'+
     '<div class="sub">'+md(a.week)+' ~ '+md(addDays(a.week,6))+' · 상신 '+esc(a.bmName)+' BM · '+esc(a.submittedAt)+'</div></div>'+
     '<span class="st '+st+'">'+esc(a.status)+'</span></div>';
