@@ -509,7 +509,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v1012a';
+var VER='v1013a';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -1043,11 +1043,12 @@ function apprReject(id){
 
 // ---------- 부서 현황 (BM) ----------
 var BM={week:null,data:null,selEmp:null,bmEmp:'',sig:null}, K_BMG='ETS_LABOR_BMGROUP';
-function bmPickGroup(v){ BM.bmEmp=v; BM.selEmp=null; BM.sig=null; BM.data=null; ls(K_BMG,v); bmLoad(); }
+function bmgKey(){ return K_BMG+'_'+(USER&&USER.empNo||''); }  // 계정별로 저장 (다른 계정의 선택이 섞이지 않게)
+function bmPickGroup(v){ BM.bmEmp=v; BM.selEmp=null; BM.sig=null; BM.data=null; ls(bmgKey(),v); bmLoad(); }
 function bmNav(n){ var lim=addDays(thisMonday(),7); BM.week=addDays(BM.week||addDays(thisMonday(),-7),n*7); if(BM.week>lim) { BM.week=lim; return; } BM.sig=null; BM.data=null; bmLoad(); }
 function bmLoad(silent){
   if(!BM.week) BM.week=addDays(thisMonday(),-7);
-  if(!BM.bmEmp){ var saved=ls(K_BMG); if(saved) BM.bmEmp=saved; else if(USER&&USER.isViewer&&!USER.isAdmin) BM.bmEmp='ALL'; }
+  if(!BM.bmEmp){ var saved=(USER.isAdmin||USER.isViewer)?ls(bmgKey()):''; if(saved) BM.bmEmp=saved; else if(USER&&USER.isViewer&&!USER.isAdmin) BM.bmEmp='ALL'; }
   $('bmWeekLbl').innerHTML=md(BM.week)+' ~ '+md(addDays(BM.week,6))+'<small>'+(BM.week===thisMonday()?'이번 주':(BM.week===addDays(thisMonday(),-7)?'지난주':(BM.week===addDays(thisMonday(),7)?'다음 주':'')))+'</small>';
   if(!silent){ if(!BM.data) $('bmBody').innerHTML='<div class="empty">불러오는 중…</div>'; else toast('현황 갱신 중…'); }
   return api({action:'bmInit',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp}).then(function(d){
