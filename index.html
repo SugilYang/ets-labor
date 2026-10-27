@@ -509,7 +509,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v1027a';
+var VER='v1027b';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -786,6 +786,10 @@ function saveForm(){
   if(!$('fDuty').value.trim()){ show('fMsg',false,'직무를 입력하세요.'); return; }
   // 같은 날 같은 프로젝트 기록이 이미 있으면 확인
   var dates=EDIT?[date]:[date].concat(Object.keys(EXTRA).filter(function(d){return EXTRA[d];}));
+  if($('fType').value!=='연차'){
+    var full=dates.filter(function(d){ return ENTRIES.some(function(e){ return e.date===d&&e.type==='연차'&&e.hours>=8&&(!EDIT||e.id!==EDIT.id); }); });
+    if(full.length){ show('fMsg',false,full.map(mdw).join(', ')+' — 종일 연차로 등록된 날이라 다른 공수를 입력할 수 없습니다.'); return; }
+  }
   var dup=[]; dates.forEach(function(d){ ENTRIES.forEach(function(e){ if(e.date===d&&e.projectNo===PJ.no&&(!EDIT||e.id!==EDIT.id)) dup.push(mdw(d)+' '+e.hours+'시간 ('+e.type+' · '+e.stage+')'); }); });
   if(dup.length&&!confirm('이미 같은 날 같은 프로젝트 기록이 있습니다.\n\n'+PJ.no+'\n'+dup.join('\n')+'\n\n그래도 추가로 저장할까요?')) return;
   var base={project:PJ.name,projectNo:PJ.no,hours:hours,unit:'시간',type:$('fType').value,stage:$('fStage').value,duty:$('fDuty').value.trim(),memo:$('fMemo').value.trim(),empNo:USER.empNo,name:USER.name,dept:USER.dept||''};
