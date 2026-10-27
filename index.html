@@ -414,8 +414,8 @@ textarea{min-height:64px;resize:vertical}
         <div class="row"><div class="f"><label>어느 BM 그룹으로</label><select id="adMailGrp"></select></div><div class="f"><label>어느 주 자료로</label><select id="adMailWeek"><option value="this">이번 주 (진행 중)</option><option value="last">지난주</option></select></div></div>
         <button class="btn ghost" onclick="adminTestMail()">테스트 메일 보내기</button>
         <div class="msg" id="adMailMsg"></div>
-        <p class="hint" style="margin-top:14px">매주 금요일 16시에는 이번 주(월~목) 미입력자에게 다우오피스 알림이 개인별로 발송됩니다. 아래는 본인에게만 테스트 발송합니다.</p>
-        <button class="btn ghost" onclick="adminTestNoti()">금요일 알림 테스트</button>
+        <p class="hint" style="margin-top:14px">월~금 아침 8시에 직전 근무일 공수 미입력자에게 다우오피스 알림이 개인별로 발송됩니다. (직전 근무일이 휴일이면 발송 안 함) 아래는 본인에게만 테스트 발송합니다.</p>
+        <button class="btn ghost" onclick="adminTestNoti()">미입력 알림 테스트</button>
         <div class="msg" id="adNotiMsg"></div>
       </div>
     </div>
