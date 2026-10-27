@@ -509,7 +509,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v1023a';
+var VER='v1027a';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -1109,7 +1109,7 @@ function bmRender(){
     var row='<tr class="'+(BM.selEmp===m.empNo?'sel':'')+'" onclick="bmSel(\''+m.empNo+'\')"><td>'+esc(m.name)+(m.duty==='BM'?' <span class="badge bm">BM</span>':'')+'</td>'+(multi?'<td style="color:var(--mu);font-size:11.5px">'+esc(m.dept)+'</td>':'')+m.days.map(function(c){return '<td class="'+c.status+'">'+c.text+'</td>';}).join('')+'<td class="tot'+(m.missing.length?' bad':'')+'">'+(m.missing.length||'')+'</td></tr>';
     if(BM.selEmp===m.empNo){
       var list=d.entries.filter(function(e){return e.empNo===m.empNo;});
-      row+='<tr class="detail"><td colspan="'+cols+'"><div class="dt"><div class="dth">'+esc(m.name)+' · '+list.length+'건 · '+sumOf(list)+'시간 <span>닫으려면 이름을 다시 누르세요</span></div>'+(list.length?list.map(function(e){ var x=Object.assign({},e); x.project=mdw(e.date)+' '+e.project; return entHtml(x,true); }).join(''):'<div class="empty">이 주 기록이 없습니다.</div>')+'</div></td></tr>';
+      row+='<tr class="detail"><td colspan="'+cols+'"><div class="dt"><div class="dth">'+esc(m.name)+' · '+list.length+'건 · '+sumOf(list)+'시간 <span>닫으려면 이름을 다시 누르세요</span></div>'+(list.length?list.map(function(e){ var x=Object.assign({},e); x.project=mdw(e.date)+' '+e.project; var h=entHtml(x,true); if(USER.isAdmin&&!d.closed) h='<div style="display:flex;gap:6px;align-items:center">'+h.replace('<div class="ent','<div style="flex:1" class="ent')+'<button class="btn danger sm" onclick="adminDelEntry(\''+e.id+'\',\''+esc(m.name)+' '+mdw(e.date)+' '+esc(e.project)+' '+e.hours+'h\')">삭제</button></div>'; return h; }).join(''):'<div class="empty">이 주 기록이 없습니다.</div>')+'</div></td></tr>';
     }
     return row; }).join('');
   html+='</tbody></table></div>';
@@ -1119,6 +1119,10 @@ function bmRender(){
   html+='<p class="hint">평일 빈칸은 미입력(빨강), 주말·공휴일은 회색. 이름을 누르면 상세 기록이 보입니다. 미입력자는 앱에서 직접 채우게 하고, 확인이 끝나면 <b>[결재 상신]</b> → 승인 후 <b>[엑셀 다운로드]</b> → "ERP입력용" 시트를 <b>ERP 실적입력 화면에 복사·붙여넣기</b>하세요.</p>';
   $('bmBody').innerHTML=html;
   $('bmDetail').style.display='none';
+}
+function adminDelEntry(id,label){
+  if(!confirm('관리자 권한으로 삭제합니다.\n\n'+label+'\n\n이 기록을 삭제할까요?')) return;
+  api({action:'deleteEntry',id:id,empNo:USER.empNo}).then(function(r){ if(r.ok){ toast('삭제됨'); BM.sig=null; bmLoad(); } else toast(r.msg||'실패'); }).catch(function(){ toast('서버 연결 오류'); });
 }
 function bmSel(emp,keep){
   BM.selEmp=(!keep&&BM.selEmp===emp)?null:emp;
