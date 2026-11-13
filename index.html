@@ -509,7 +509,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="toast" id="toast"></div>
 
 <script>
-var VER='v1027b';
+var VER='v1113';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -552,6 +552,13 @@ function doLogin(){
     else if(d.ok&&d.multiple) show('lgMsg',false,'동일 정보의 직원이 여러 명입니다. 관리자에게 문의하세요.');
     else show('lgMsg',false,d.msg||'일치하는 직원이 없습니다.');
   }).catch(function(){ b.disabled=false; b.textContent='확인'; show('lgMsg',false,'서버 연결 오류. 잠시 후 다시 시도하세요.'); });
+}
+// 추가인원(다우에 없는 협력사 인원): 이름을 넣으면 로그인 번호가 자동으로 채워짐
+var EXTRA={};
+function loadExtra(){ api({action:'extraNames'}).then(function(d){ if(d.ok) EXTRA=d.map||{}; }).catch(function(){}); }
+function onLgName(){
+  var n=$('lgName').value.trim(), code=EXTRA[n];
+  if(code){ $('lgPhone').value=code; show('lgMsg',true,n+'님은 번호가 자동 입력됩니다. 확인을 누르세요.'); }
 }
 function logout(){ [K_USER,K_ENT,K_LAST].forEach(function(k){localStorage.removeItem(k);}); location.reload(); }
 
@@ -1319,7 +1326,7 @@ function openHelp(){ $('helpSheet').classList.add('on'); }
 function closeHelp(){ $('helpSheet').classList.remove('on'); }
 (function(){
   try{ USER=ls(K_USER); }catch(e){ USER=null; }
-  if(USER&&USER.name&&USER.empNo) enter(); else $('login').style.display='block';
+  if(USER&&USER.name&&USER.empNo) enter(); else { $('login').style.display='block'; loadExtra(); $('lgName').addEventListener('input',onLgName); }
 })();
 </script>
 </body>
