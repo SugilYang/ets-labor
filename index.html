@@ -118,6 +118,7 @@ textarea{min-height:64px;resize:vertical}
 .ent .hr small{font-size:11px;color:var(--mu);font-weight:600;margin-left:2px}
 .ent.ro{cursor:default}.ent.ro .p{color:var(--tx2)}
 .ent .pend{font-size:10.5px;color:var(--amber);font-weight:700}
+.bmmemo{margin:8px 0 4px;padding:9px 12px;background:#FFF8E1;border:1px solid #FDE68A;border-radius:10px;font-size:13px;line-height:1.55;color:#5B4A0A;white-space:pre-wrap}
 .empty{padding:18px 0;text-align:center;color:var(--mu);font-size:13.5px}
 .sum{font-size:12.5px;color:var(--mu);text-align:right;padding-top:8px;border-top:1px dashed var(--ln)}
 .carry{border:1.5px dashed var(--c2);background:rgba(79,107,255,.05)}
@@ -498,6 +499,7 @@ textarea{min-height:64px;resize:vertical}
     <div class="bar"></div>
     <h3><span id="signTitle">서명</span><button onclick="signClose()">닫기</button></h3>
     <p class="hint" style="margin:0 0 10px" id="signDesc"></p>
+    <div id="signMemoWrap" style="display:none;margin:0 0 10px"><label style="display:block;font-size:12.5px;font-weight:700;margin-bottom:5px">결재자에게 전달할 메모 <small style="font-weight:500;color:var(--mu)">(선택)</small></label><textarea id="signMemo" rows="3" maxlength="300" placeholder="예) 김OO 11/18 미입력은 해외출장 중 통신 불가, 복귀 후 입력 예정" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit;font-size:13.5px;resize:none"></textarea></div>
     <div class="pad" id="pad"><canvas id="padC"></canvas><div class="ph">이곳에 손가락(또는 마우스)으로 서명하세요</div></div>
     <div class="acts two" style="margin-top:10px"><button class="btn ghost" onclick="signClear()">지우기</button><button class="btn" id="signOk" onclick="signSubmit()">확인</button></div>
     <div class="msg" id="signMsg"></div>
@@ -517,7 +519,7 @@ textarea{min-height:64px;resize:vertical}
 <div class="saving" id="saving"><div class="box"><div class="sp"></div><span id="savingTxt">서버에 저장 중…</span><small id="savingSub"></small></div></div>
 
 <script>
-var VER='v1120';
+var VER='v1120b';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -873,8 +875,9 @@ function delSelected(){
 
 // ---------- 서명 패드 ----------
 var SIGN_CB=null, PADCTX=null, PADON=false, PADUSED=false;
-function signOpen(title,desc,cb){
+function signOpen(title,desc,cb,withMemo){
   SIGN_CB=cb; $('signTitle').textContent=title; $('signDesc').textContent=desc; hide('signMsg');
+  $('signMemoWrap').style.display=withMemo?'block':'none'; $('signMemo').value='';
   $('signSheet').classList.add('on');
   setTimeout(function(){
     var c=$('padC'), r=c.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
@@ -895,9 +898,9 @@ function signClear(){ var c=$('padC'); PADCTX.clearRect(0,0,c.width,c.height); P
 function signClose(){ $('signSheet').classList.remove('on'); SIGN_CB=null; }
 function signSubmit(){
   if(!PADUSED){ show('signMsg',false,'서명을 입력하세요.'); return; }
-  var data=$('padC').toDataURL('image/png'), cb=SIGN_CB;
+  var data=$('padC').toDataURL('image/png'), cb=SIGN_CB, memo=$('signMemo').value.trim();
   $('signSheet').classList.remove('on'); SIGN_CB=null;
-  if(cb) cb(data);
+  if(cb) cb(data,memo);
 }
 
 // ---------- 결재 ----------
@@ -946,6 +949,7 @@ function apprCard(a,viewOnly){
       '<div class="sub">'+md(a.week)+' ~ '+md(addDays(a.week,6))+' · 상신 '+esc(a.bmName)+' BM · '+esc(a.submittedAt)+'</div>'+
       '<div class="sub">결재자 '+esc(a.apprName||'-')+(a.doneAt?' · '+esc(a.doneAt):' · 대기 중')+'</div></div>'+
       '<span class="st '+st+'">'+esc(a.status)+'</span></div>';
+    if(a.memo) b+='<div class="bmmemo">BM 메모 · '+esc(a.memo)+'</div>';
     if(a.reason) b+='<div class="sub" style="color:var(--warn)">반려 사유: '+esc(a.reason)+'</div>';
     b+='<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">'+(a.imageUrl?'<button class="btn sm" onclick="apprImage(\''+a.id+'\')">결재 문서 보기</button>':'')+'<button class="btn ghost sm" onclick="apprToggle(\''+a.id+'\')">내용 보기</button></div><div id="ad_'+a.id+'" style="display:none;margin-top:8px"></div>';
     if(USER.isAdmin&&a.status!=='대기') b+='<div style="text-align:right;margin-top:6px"><button class="btn danger sm" onclick="apprDelete(\''+a.id+'\')">삭제</button></div>';
@@ -954,6 +958,7 @@ function apprCard(a,viewOnly){
   var body='<div class="apc"><div class="top"><div><div class="ti">'+esc(a.dept)+'</div>'+
     '<div class="sub">'+md(a.week)+' ~ '+md(addDays(a.week,6))+' · 상신 '+esc(a.bmName)+' BM · '+esc(a.submittedAt)+'</div></div>'+
     '<span class="st '+st+'">'+esc(a.status)+'</span></div>';
+  if(a.memo) body+='<div class="bmmemo">BM 메모 · '+esc(a.memo)+'</div>';
   if(a.status==='대기'){
     body+='<div id="ad_'+a.id+'"><div class="empty" style="padding:8px 0">내용 불러오는 중…</div></div>'+
       '<div class="acts2"><button class="btn danger" onclick="apprReject(\''+a.id+'\')">반려</button>'+
@@ -1167,16 +1172,16 @@ function bmSel(emp,keep){
 }
 function bmClose(){
   if(!confirm(BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주간보고를 결재 상신할까요?\n상신하면 소속원이 이 주의 기록을 수정할 수 없고, 상위 결재자에게 결재 요청이 올라갑니다.')) return;
-  signOpen('결재 상신 서명',BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주간보고에 서명합니다.',function(sign){
+  signOpen('결재 상신 서명',BM.data.dept+' '+md(BM.week)+'~'+md(addDays(BM.week,6))+' 주간보고에 서명합니다.',function(sign,memo){
     prog(20,'결재 상신 중','서명 저장 및 결재 요청 중…');
     var t=setInterval(function(){ var w=parseFloat($('progF').style.width)||20; if(w<90) prog(w+3); },400);
-    api({action:'bmClose',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp,sign:sign}).then(function(d){
+    api({action:'bmClose',empNo:USER.empNo,pin:PIN[bmPinKind()],week:BM.week,bmEmp:BM.bmEmp,sign:sign,memo:memo}).then(function(d){
       clearInterval(t); prog(100,'완료',d.ok?'상신되었습니다.':'');
       setTimeout(function(){ prog(null);
         if(d.ok){ var a=d.approval||{}; toast(a.pending?('결재 상신 완료 — '+a.approver+'님에게 결재 요청'):'상신 완료 (결재자 미지정 — 결재 요청 없음)'); BM.sig=null; bmLoad(); }
         else toast(d.msg||'실패'); },600);
     }).catch(function(){ clearInterval(t); prog(null); toast('서버 연결 오류'); });
-  });
+  },true);
 }
 function bmExcel(){
   prog(10,'엑셀 만드는 중','부서 기록을 모으는 중…');
