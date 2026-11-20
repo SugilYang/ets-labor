@@ -243,6 +243,13 @@ textarea{min-height:64px;resize:vertical}
 .exban.on{display:block}
 .exban b{display:block;font-size:14px;margin-bottom:2px}
 .netbar{font-size:12px;color:#B45309;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:8px 12px;margin-bottom:10px;display:none}
+.netbar.err{color:#fff;background:#D9243F;border-color:#B3364A;font-weight:700;font-size:13px}
+.saving{position:fixed;inset:0;background:rgba(11,15,26,.55);z-index:80;display:none;align-items:center;justify-content:center}
+.saving.on{display:flex}
+.saving .box{background:#fff;border-radius:16px;padding:22px 26px;text-align:center;min-width:220px;font-size:14px;font-weight:700;color:#0B0F1A}
+.saving .sp{width:28px;height:28px;border:3px solid #E4E9F5;border-top-color:#0B0F1A;border-radius:50%;margin:0 auto 12px;animation:spin .8s linear infinite}
+.saving small{display:block;margin-top:6px;font-size:12px;color:#7482A0;font-weight:500}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* 부서 현황 */
 .wknav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
@@ -507,9 +514,10 @@ textarea{min-height:64px;resize:vertical}
 </div>
 <div class="docwrap" id="docwrap"></div>
 <div class="toast" id="toast"></div>
+<div class="saving" id="saving"><div class="box"><div class="sp"></div><span id="savingTxt">서버에 저장 중…</span><small id="savingSub"></small></div></div>
 
 <script>
-var VER='v1117';
+var VER='v1120';
 var API = "https://script.google.com/macros/s/AKfycbxFvUeZuXCSiZkl5PQ18tN2Xet4lTYUbidn_RRgtcekj8Vhj7kg2uvGf_5OzjA9baY/exec";
 var TYPES = ['검수','조립및제작','회의','설계','셋업','양산','대기','CS','제어','전장','기타','선행','연차','관리'];
 var K_USER='ETS_LABOR_USER', K_PJ='ETS_LABOR_PROJECTS', K_ENT='ETS_LABOR_ENTRIES', K_Q='ETS_LABOR_QUEUE', K_LAST='ETS_LABOR_LAST';
@@ -571,7 +579,7 @@ function enter(){
   applyUser();
   OPEN=[thisMonday(),addDays(thisMonday(),7)]; SEL=today();
   var pc=ls(K_PJ); PROJECTS=(pc&&pc.list)||[]; ENTRIES=ls(K_ENT)||[]; QUEUE=ls(K_Q)||[];
-  render(); sync();
+  render(); netbar(''); sync();
   // 메일 링크(?tab=bm&week=YYYY-MM-DD)로 들어온 경우 바로 부서 탭으로
   var qs=new URLSearchParams(location.search);
   if(qs.get('tab')==='appr'){ history.replaceState(null,'',location.pathname); setTimeout(function(){ tab('Appr'); },50); }
@@ -623,7 +631,24 @@ function sync(){
     });
   }).catch(function(){ if(!PROJECTS.length) netbar('프로젝트 목록을 아직 못 받았습니다. 인터넷 연결 후 자동으로 받아옵니다.'); });
 }
-function netbar(t){ var el=$('netbar'); if(t){el.textContent=t;el.style.display='block';} else el.style.display='none'; }
+function pendingCount(){ return QUEUE.reduce(function(a,q){ return a+(q.op==='save'?q.entries.length:1); },0); }
+function netbar(t){ var el=$('netbar'), n=pendingCount(); el.className='netbar'+(n?' err':''); if(!t&&n){ el.innerHTML='서버에 저장되지 않은 기록 '+n+'건<br><span style="font-weight:500">인터넷 연결 후 앱을 다시 열면 전송됩니다.</span>'; el.style.display='block'; return; } if(t){el.textContent=t;el.style.display='block';} else el.style.display='none'; }
+function showSaving(on,txt,sub){ $('saving').classList.toggle('on',!!on); if(txt) $('savingTxt').textContent=txt; $('savingSub').textContent=sub||''; }
+/** 저장/삭제를 서버 기준으로: 로딩 표시 → 최대 3회 시도(5초 간격) → 성공이면 '서버 저장 완료', 실패면 큐에 남기고 빨간 배너 */
+function commit(op,label){
+  QUEUE.push(op); ls(K_Q,QUEUE); render();
+  var tries=0;
+  function attempt(){
+    tries++; showSaving(true,label+' — 서버에 저장 중…',tries>1?'재시도 '+(tries-1)+'/2':'');
+    return flush().then(function(rej){ showSaving(false); netbar(''); if(rej) alert('저장되지 않았습니다.\n'+rej); else toast('서버 저장 완료'); })
+      .catch(function(){
+        if(tries<3){ showSaving(true,label+' — 연결 재시도 중…','5초 후 다시 시도 ('+tries+'/2)'); return new Promise(function(r){setTimeout(r,5000);}).then(attempt); }
+        showSaving(false); netbar(''); render();
+        alert('서버에 저장되지 않았습니다.\n\n입력한 내용은 이 폰에 보관되어 있고, 인터넷이 연결된 곳에서 이 앱을 다시 열면 자동으로 전송됩니다.\n전송 전까지는 미입력으로 집계됩니다.');
+      });
+  }
+  return attempt();
+}
 
 // ---------- 전송 큐 ----------
 function enqueue(op){ QUEUE.push(op); ls(K_Q,QUEUE); render(); return flush(); }
@@ -633,8 +658,8 @@ function flush(){
   return api(p).then(function(d){
     QUEUE.shift(); ls(K_Q,QUEUE);
     if(!d.ok){ toast('저장 거부: '+(d.msg||'오류')); if(op.op==='save'){ var ids={}; op.entries.forEach(function(e){ids[e.id]=1;}); ENTRIES=ENTRIES.filter(function(e){return !ids[e.id];}); ls(K_ENT,ENTRIES);} render(); }
-    return flush();
-  }).catch(function(e){ netbar('전송 대기 '+QUEUE.length+'건 — 인터넷 연결되면 자동으로 보냅니다.'); render(); throw e; });
+    return flush().then(function(r){ return d.ok?r:(r||d.msg||'오류'); });   // 거부 사유를 호출자에게 전달
+  }).catch(function(e){ netbar(''); render(); throw e; });
 }
 function isPending(id){ return QUEUE.some(function(q){ return q.op==='save'&&q.entries.some(function(e){return e.id===id;}); }); }
 
@@ -709,7 +734,7 @@ function carryFrom(prev){
   if(blocked()){ toast('공수 입력 대상이 아닙니다.'); return; }
   var copies=entriesOf(prev).map(function(e){ var c=JSON.parse(JSON.stringify(e)); c.id=uid(); c.date=SEL; return c; });
   ENTRIES=ENTRIES.concat(copies); ls(K_ENT,ENTRIES);
-  enqueue({op:'save',entries:copies}).catch(function(){}); toast(copies.length+'건 저장');
+  commit({op:'save',entries:copies},copies.length+'건');
 }
 function renderMissBanner(){
   var el=$('missBanner'), out=[];
@@ -806,16 +831,16 @@ function saveForm(){
   if(EDIT){ list.push(Object.assign({},base,{id:EDIT.id,date:date})); ENTRIES=ENTRIES.filter(function(e){return e.id!==EDIT.id;}); }
   else [date].concat(Object.keys(EXTRA).filter(function(d){return EXTRA[d];})).forEach(function(d){ list.push(Object.assign({},base,{id:uid(),date:d})); });
   ENTRIES=ENTRIES.concat(list); ls(K_ENT,ENTRIES);
-  SEL=date; SCROLL_SEL=true; closeForm(); toast(list.length+'건 저장'); tab('Input');
-  enqueue({op:'save',entries:list}).catch(function(){});
+  SEL=date; SCROLL_SEL=true; closeForm(); tab('Input');
+  commit({op:'save',entries:list},list.length+'건');
 }
 function delForm(){
   if(!EDIT||!confirm('이 기록을 삭제할까요?')) return;
   var id=EDIT.id, pending=isPending(id);
   ENTRIES=ENTRIES.filter(function(e){return e.id!==id;}); ls(K_ENT,ENTRIES);
   QUEUE=QUEUE.map(function(q){ if(q.op==='save') q.entries=q.entries.filter(function(e){return e.id!==id;}); return q; }).filter(function(q){return q.op!=='save'||q.entries.length;}); ls(K_Q,QUEUE);
-  closeForm(); toast('삭제됨');
-  if(pending) render(); else enqueue({op:'delete',id:id}).catch(function(){});
+  closeForm();
+  if(pending){ render(); toast('삭제됨'); } else commit({op:'delete',id:id},'삭제');
 }
 
 // ---------- 기록 여러 건 선택 삭제 ----------
